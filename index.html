@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HTML Mobile Parkour - 100+ Levels</title>
+    <title>HTML Mobile Parkour - N Spikes</title>
     <style>
         body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; }
         #gameContainer { display: flex; flex-direction: column; align-items: center; background-color: #E6E6FA; padding: 10px; box-sizing: border-box; border-radius: 8px; }
@@ -44,7 +44,7 @@
         canvas.height = gameHeight;
 
         const gravity = 0.5;
-        const playerSpeed = 3; // Base speed
+        const playerSpeed = 3;
         const jumpStrength = -10;
         const dashSpeed = 8;
         const dashDuration = 150;
@@ -57,7 +57,7 @@
         const groundColor = '#6A0DAD';
         const playerColor = '#8A2BE2';
         const blockColor = '#9932CC';
-        const spikeColor = '#4B0082'; // Dark Purple (Indigo)
+        const spikeColor = '#4B0082';
         const startColor = '#7FFF00';
         const goalColor = '#FFD700';
         const gameBackgroundColor = '#E6E6FA';
@@ -79,162 +79,84 @@
 
         let ground, startZone, goalZone, spikes;
 
-        // ------------------------------------------------------------------
-        //  PRE-DEFINED LEVELS (First few levels for introduction)
-        // ------------------------------------------------------------------
         const definedLevels = [
-            { // Level 1
-                name: "The First Step", messageOnLoad: "Arrows, Space, X, C are your tools.",
-                groundY: gameHeight - 40,
-                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
-                goalZone: { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 },
-                spikes: [ { x: gameWidth / 2 - 15, y: gameHeight - 60, width: 30, height: 20 } ]
-            },
-            { // Level 2
-                name: "A Little Jump", messageOnLoad: "Mind the gap!",
-                groundY: gameHeight - 40,
-                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
-                goalZone: { x: gameWidth - 80, y: gameHeight - 150, width: 60, height: 30 },
-                spikes: [ { x: 120, y: gameHeight - 60, width: 40, height: 20 }, { x: 190, y: gameHeight - 60, width: 40, height: 20 } ]
-            },
-            { // Level 3
-                name: "Block Placement", messageOnLoad: "Use 'X' to place blocks.",
-                groundY: gameHeight - 40,
-                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
-                goalZone: { x: gameWidth - 70, y: 100, width: 60, height: 30 },
-                spikes: [ { x: 100, y: gameHeight - 60, width: 30, height: 20 }, { x: 200, y: gameHeight - 120, width: 30, height: 20 }, { x: 150, y: gameHeight - 60, width: 30, height: 20 }]
-            },
-            { // Level 4
-                name: "Dash Practice", messageOnLoad: "'C' to dash through!",
-                groundY: gameHeight - 40,
-                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
-                goalZone: { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 },
-                spikes: [ { x: 120, y: gameHeight - 60, width: 20, height: 20 }, { x: 150, y: gameHeight - 60, width: 20, height: 20 }, { x: 180, y: gameHeight - 60, width: 20, height: 20 } ] // Dash through these
-            },
-            { // Level 5
-                name: "Combining Skills", messageOnLoad: "Blocks and dashes will be needed.",
-                groundY: gameHeight - 40,
-                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
-                goalZone: { x: gameWidth - 70, y: 80, width: 60, height: 30 }, // High goal
-                spikes: [ { x: 90, y: gameHeight - 60, width: 180, height: 20 } ] // Wide spike pit
-            }
+            { name: "The First Step", messageOnLoad: "Arrows, Space, X, C.", groundY: gameHeight - 40, startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth / 2 - 15, y: gameHeight - 60, width: 30, height: 20 } ]},
+            { name: "A Little Jump", messageOnLoad: "Mind the gap!", groundY: gameHeight - 40, startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth - 80, y: gameHeight - 150, width: 60, height: 30 }, spikes: [ { x: 120, y: gameHeight - 60, width: 40, height: 20 }, { x: 190, y: gameHeight - 60, width: 40, height: 20 } ]},
+            { name: "Block Placement", messageOnLoad: "Use 'X' for blocks.", groundY: gameHeight - 40, startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth - 70, y: 100, width: 60, height: 30 }, spikes: [ { x: 100, y: gameHeight - 60, width: 30, height: 20 }, { x: 200, y: gameHeight - 120, width: 30, height: 20 }, { x: 150, y: gameHeight - 60, width: 30, height: 20 }]},
+            { name: "Dash Practice", messageOnLoad: "'C' to dash!", groundY: gameHeight - 40, startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: 120, y: gameHeight - 60, width: 20, height: 20 }, { x: 150, y: gameHeight - 60, width: 20, height: 20 }, { x: 180, y: gameHeight - 60, width: 20, height: 20 } ]},
+            { name: "Combining Skills", messageOnLoad: "Blocks and dashes needed.", groundY: gameHeight - 40, startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth - 70, y: 80, width: 60, height: 30 }, spikes: [ { x: 90, y: gameHeight - 60, width: 180, height: 20 } ]}
         ];
         const numDefinedLevels = definedLevels.length;
 
-        // ------------------------------------------------------------------
-        // PROCEDURAL LEVEL GENERATOR
-        // ------------------------------------------------------------------
         function generateProceduralLevel(levelNumber) {
-            const effectiveLevel = levelNumber - numDefinedLevels; // Difficulty based on how far past defined levels we are
             let config = {
-                name: `Procedural Level ${effectiveLevel}`,
-                messageOnLoad: `Level ${levelNumber}: Test your limits!`,
+                name: `Procedural Lvl ${levelNumber}`,
+                messageOnLoad: `Level ${levelNumber}: ${levelNumber} Spike${levelNumber !== 1 ? 's' : ''}!`,
                 groundY: gameHeight - 40,
-                startZone: { x: 10 + Math.random()*20, y: gameHeight - 70, width: 50 + Math.random()*10, height: 30 },
-                goalZone: { x: gameWidth - 90 + Math.random()*30, y: gameHeight - 70, width: 50 + Math.random()*10, height: 30 },
+                startZone: { x: 10 + Math.random()*10, y: gameHeight - 70, width: 50 + Math.random()*10, height: 30 },
+                goalZone: { x: gameWidth - 70 - Math.random()*10, y: gameHeight - 70, width: 50 + Math.random()*10, height: 30 },
                 spikes: []
             };
 
-            // --- Spike Generation ---
-            let numSpikes = Math.min(15, 2 + Math.floor(effectiveLevel / 2.5)); // Cap spikes to avoid pure spam
-            let spikeWidthMin = Math.max(15, 40 - effectiveLevel * 1.5); // Spikes get narrower, harder to stand on edge
-            let spikeWidthMax = Math.max(25, 60 - effectiveLevel * 2);
-            let safeGapMin = Math.max(player.width + 5, 60 - effectiveLevel * 2); // Gaps get tighter
+            // For procedural levels, number of spikes IS the level number
+            const numSpikesToGenerate = levelNumber;
 
-            let currentX = config.startZone.x + config.startZone.width + 40 + (Math.random() * 20); // Start placing spikes after start zone
+            let spikeW = Math.max(5, 35 - Math.floor(levelNumber / 2.5)); // Spikes get very narrow
+            const spikeH = 20;
 
-            for (let i = 0; i < numSpikes && currentX < config.goalZone.x - 80; i++) {
-                let spikeW = spikeWidthMin + Math.random() * (spikeWidthMax - spikeWidthMin);
-                let spikeY = config.groundY - 20; // Default on ground
-                let onGround = true;
+            const minX = config.startZone.x + config.startZone.width + 5;
+            const maxX = config.goalZone.x - 5 - spikeW;
+            const playableWidth = maxX - minX;
+            
+            const minYPlayable = 60; // Avoid very top of screen for most spikes
+            const maxYPlayable = config.groundY - spikeH; // On ground
 
-                // Chance for floating spikes increases with level
-                if (effectiveLevel > 3 && Math.random() < 0.2 + effectiveLevel * 0.02) {
-                    spikeY = config.groundY - 20 - (Math.random() * Math.min(150, 40 + effectiveLevel * 5));
-                    onGround = false;
+            if (playableWidth < spikeW && numSpikesToGenerate > 0) { // Not enough horizontal space
+                // If not enough space, stack them or place one central spike if possible
+                if (numSpikesToGenerate > 0) {
+                     config.spikes.push({ x: gameWidth/2 - spikeW/2, y: maxYPlayable, width: spikeW, height: spikeH });
                 }
-
-                // Chance for slightly varied height ground spikes
-                if (onGround && effectiveLevel > 5 && Math.random() < 0.1) {
-                    spikeY -= Math.random() * 10;
-                }
-                
-                // Prevent spikes directly under typical jump arc from start if too early
-                if (i < 2 && currentX < 150 && !onGround && spikeY < config.startZone.y - player.height - 5) {
-                    spikeY = config.groundY - 20; // Put it back on ground
-                }
-
-                config.spikes.push({ x: currentX, y: spikeY, width: spikeW, height: 20 });
-                currentX += spikeW + safeGapMin + (Math.random() * Math.max(10, 30 - effectiveLevel)); // Next spike pos
-            }
-
-            // --- Goal Placement ---
-            if (effectiveLevel > 2) {
-                config.goalZone.y = Math.max(60, config.groundY - 30 - (Math.random() * Math.min(gameHeight * 0.6, effectiveLevel * 15)));
-                if (effectiveLevel > 10) { // Force more complex horizontal placement
-                     config.goalZone.x = 100 + Math.random() * (gameWidth - 200);
-                }
-            }
-            // Ensure goal isn't overlapping badly with last spike
-            if (config.spikes.length > 0) {
-                let lastSpike = config.spikes[config.spikes.length -1];
-                if (config.goalZone.x < lastSpike.x + lastSpike.width + player.width) {
-                    config.goalZone.x = lastSpike.x + lastSpike.width + player.width + 10;
-                    config.goalZone.x = Math.min(config.goalZone.x, gameWidth - config.goalZone.width - 5);
-                }
-            }
-
-
-            // --- TAS-like difficulty scaling (levels > 50 relative, or absolute > 55) ---
-            if (effectiveLevel > 45) { // Roughly level 50+ absolute
-                config.messageOnLoad = `Level ${levelNumber}: Frame Perfect!`;
-                // Shrink player hitbox slightly to demand more precision (visual player size remains)
-                // This is a conceptual TAS element; actual hitbox change needs care
-                // player.width = playerBaseWidth * 0.8; player.height = playerBaseHeight * 0.8;
-
-                // Add very specific "required block" sections
-                if (effectiveLevel > 55 && config.spikes.length > 2) { // e.g. Level 60+
-                    // Create a wide pit that MUST be blocked
-                    let pitStartIndex = Math.floor(config.spikes.length / 3);
-                    let pitEndIndex = Math.floor(config.spikes.length * 2 / 3);
-                    if (pitEndIndex > pitStartIndex) {
-                        config.spikes[pitStartIndex].x = config.startZone.x + config.startZone.width + 50;
-                        config.spikes[pitStartIndex].width = gameWidth * 0.6; // Very wide spike
-                        config.spikes[pitStartIndex].y = config.groundY - 20;
-                         // Remove spikes that would be covered by this massive one
-                        config.spikes = config.spikes.filter((spike, index) => index <= pitStartIndex || spike.x > config.spikes[pitStartIndex].x + config.spikes[pitStartIndex].width);
-                    }
-                }
-                 if (effectiveLevel > 65) { // e.g. Level 70+
-                    config.messageOnLoad = `Level ${levelNumber}: TAS REQUIRED!`;
-                    // Extremely tight spike corridors or precise block jumps
-                    // Example: A "spike ceiling" forcing low travel or precise block placement
-                    let ceilingSpikeY = 60 + Math.random() * 40;
-                    for(let k=0; k < 3; k++){
-                        config.spikes.push({
-                            x: gameWidth/2 - 60 + k * 40,
-                            y: ceilingSpikeY,
-                            width: 35,
-                            height: 20
-                        });
-                    }
-                    // And a corresponding floor hazard that makes a narrow path
-                     config.spikes.push({
-                        x: gameWidth/2 - 60,
-                        y: config.groundY - 20,
-                        width: 115, // Covers the area under ceiling spikes
-                        height: 20
-                    });
-                    // Goal might be just past this, requiring perfect blocks + dash
-                    config.goalZone.y = Math.min(config.goalZone.y, ceilingSpikeY + 25);
-                    config.goalZone.x = gameWidth/2 + 60;
-                 }
             } else {
-                // player.width = playerBaseWidth; player.height = playerBaseHeight; // Reset player size
+                for (let i = 0; i < numSpikesToGenerate; i++) {
+                    let sX = minX + (Math.random() * playableWidth);
+                    let sY;
+
+                    // Increase chance of floating spikes significantly with level number
+                    // At high levels, most spikes might be floating or form complex patterns
+                    if (levelNumber > 10 && Math.random() < (0.15 + Math.min(0.7, levelNumber * 0.015)) ) {
+                        sY = minYPlayable + Math.random() * (maxYPlayable - minYPlayable - 20);
+                    } else {
+                        sY = maxYPlayable; // Default to ground spike
+                    }
+                    config.spikes.push({ x: sX, y: sY, width: spikeW, height: spikeH });
+                }
             }
 
-            // Ensure start and goal are not themselves spiked
-            config.spikes = config.spikes.filter(s => !rectCollision(s, config.startZone) && !rectCollision(s, config.goalZone));
+            // Adjust Goal position for higher levels
+            if (levelNumber > 7) { // Start adjusting goal earlier
+                config.goalZone.y = Math.max(50, config.groundY - 30 - (Math.random() * Math.min(gameHeight * 0.75, levelNumber * 6)));
+                config.goalZone.y = Math.min(config.goalZone.y, config.groundY - config.goalZone.height - 5);
+            }
+            if (levelNumber > 15) {
+                config.goalZone.x = (gameWidth / 4) + (Math.random() * (gameWidth / 2)); // More varied X
+            }
+            // Ensure goal is not entirely inside a spike (simple check)
+            config.goalZone.x = Math.max(5, Math.min(config.goalZone.x, gameWidth - config.goalZone.width - 5));
+
+
+            if (levelNumber > 60) {
+                config.messageOnLoad = `Lvl ${levelNumber}: TAS Only Zone!`;
+            } else if (levelNumber > 35) {
+                config.messageOnLoad = `Lvl ${levelNumber}: Extreme Spike Density!`;
+            } else if (levelNumber > 20) {
+                config.messageOnLoad = `Lvl ${levelNumber}: Getting Crowded!`;
+            }
+
+            // Make sure start and goal zones are not directly on a spike by this simple generation
+            config.spikes = config.spikes.filter(s => 
+                !(rectCollision(s, config.startZone) || rectCollision(s, config.goalZone))
+            );
+
 
             return config;
         }
@@ -245,41 +167,33 @@
             player.onGround = false;
             player.blocksAvailable = maxBlocks;
             placedBlocks = [];
-            // Reset player size if it was modified by TAS levels (conceptual)
-            // player.width = playerBaseWidth; player.height = playerBaseHeight;
-
 
             let levelConfig;
             if (levelNumber <= numDefinedLevels) {
-                levelConfig = { ...definedLevels[levelNumber - 1] }; // Copy to avoid modifying original
-                // Deep copy spike array for defined levels too
-                if (levelConfig.spikes) {
-                    levelConfig.spikes = levelConfig.spikes.map(s => ({...s}));
-                }
+                const definedConfig = definedLevels[levelNumber - 1];
+                levelConfig = JSON.parse(JSON.stringify(definedConfig)); // Deep copy
                 messageDisplay.textContent = levelConfig.messageOnLoad || `Level ${levelNumber}: ${levelConfig.name || ''}`;
             } else {
                 levelConfig = generateProceduralLevel(levelNumber);
                 // Message is set within generateProceduralLevel for these
+                if (!messageDisplay.textContent && levelConfig.messageOnLoad) { // Ensure message is set if generator provided one
+                    messageDisplay.textContent = levelConfig.messageOnLoad;
+                } else if (!messageDisplay.textContent) {
+                     messageDisplay.textContent = `Level ${levelNumber}: ${levelConfig.name || (levelNumber + " Spikes!")}`;
+                }
             }
 
             ground = { x: 0, y: levelConfig.groundY, width: gameWidth, height: gameHeight - levelConfig.groundY };
-            startZone = { ...levelConfig.startZone };
-            goalZone = { ...levelConfig.goalZone };
-            spikes = levelConfig.spikes ? levelConfig.spikes.map(s => ({...s})) : [];
+            startZone = { ...(levelConfig.startZone || { x: 10, y: gameHeight - 70, width: 60, height: 30 }) };
+            goalZone = { ...(levelConfig.goalZone || { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 }) };
+            spikes = levelConfig.spikes ? JSON.parse(JSON.stringify(levelConfig.spikes)) : [];
 
 
             player.x = startZone.x + startZone.width / 2 - player.width / 2;
-            player.y = startZone.y - player.height - 1; // Place on top of start platform
-
-            // Default message if none specific
-            if (!messageDisplay.textContent && levelNumber > numDefinedLevels) {
-                 messageDisplay.textContent = `Level ${levelNumber}: Challenge Accepted!`;
-            }
-
+            player.y = startZone.y - player.height - 1;
 
             updateUI();
         }
-
 
         function rectCollision(rect1, rect2) {
             if (!rect1 || !rect2) return false;
@@ -321,11 +235,11 @@
 
             placedBlocks.forEach(block => {
                 if (rectCollision(player, block)) {
-                    if (player.dy > 0 && player.y + player.height - player.dy <= block.y + 1) { // +1 for more reliable landing
+                    if (player.dy > 0 && (player.y + player.height - player.dy) <= block.y + 1) {
                         player.y = block.y - player.height; player.dy = 0; player.onGround = true;
-                    } else if (player.dx > 0 && player.x + player.width - player.dx <= block.x) {
+                    } else if (player.dx > 0 && (player.x + player.width - player.dx) <= block.x) {
                         player.x = block.x - player.width; player.dx = 0;
-                    } else if (player.dx < 0 && player.x - player.dx >= block.x + block.width) {
+                    } else if (player.dx < 0 && (player.x - player.dx) >= block.x + block.width) {
                         player.x = block.x + block.width; player.dx = 0;
                     }
                 }
@@ -348,35 +262,22 @@
             if (goalZone && rectCollision(player, goalZone) && !isLevelTransitioning) {
                 isLevelTransitioning = true;
                 currentLevel++;
-                let levelNameForMessage = "";
-                if(currentLevel <= numDefinedLevels && definedLevels[currentLevel-1]){
-                    levelNameForMessage = definedLevels[currentLevel-1].name || "";
+                let nextLevelName = "";
+                if(currentLevel <= numDefinedLevels && definedLevels[currentLevel-1] && definedLevels[currentLevel-1].name){
+                    nextLevelName = ": " + definedLevels[currentLevel-1].name;
                 }
-                messageDisplay.textContent = `Advancing to Level ${currentLevel}${levelNameForMessage ? (": " + levelNameForMessage) : ""}...`;
+                messageDisplay.textContent = `Advancing to Level ${currentLevel}${nextLevelName}...`;
                 setTimeout(() => { setupLevel(currentLevel); }, 1200);
             }
-            if (player.y > canvas.height + player.height * 2) resetPlayer(); // Increased margin for falling off
+            if (player.y > canvas.height + player.height * 2) resetPlayer();
         }
 
         function draw() {
             ctx.fillStyle = gameBackgroundColor;
             ctx.fillRect(0, 0, gameWidth, gameHeight);
-            if (ground) {
-                ctx.fillStyle = groundColor;
-                ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
-            }
-            if (startZone) {
-                ctx.fillStyle = startColor;
-                ctx.fillRect(startZone.x, startZone.y, startZone.width, startZone.height);
-                ctx.fillStyle = 'black'; ctx.textAlign = 'center';
-                ctx.fillText("START", startZone.x + startZone.width / 2, startZone.y + startZone.height / 2 + 5);
-            }
-            if (goalZone) {
-                ctx.fillStyle = goalColor;
-                ctx.fillRect(goalZone.x, goalZone.y, goalZone.width, goalZone.height);
-                ctx.fillStyle = 'black'; ctx.textAlign = 'center';
-                ctx.fillText("GOAL", goalZone.x + goalZone.width / 2, goalZone.y + goalZone.height / 2 + 5);
-            }
+            if (ground) { ctx.fillStyle = groundColor; ctx.fillRect(ground.x, ground.y, ground.width, ground.height); }
+            if (startZone) { ctx.fillStyle = startColor; ctx.fillRect(startZone.x, startZone.y, startZone.width, startZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("START", startZone.x + startZone.width / 2, startZone.y + startZone.height / 2 + 5); }
+            if (goalZone) { ctx.fillStyle = goalColor; ctx.fillRect(goalZone.x, goalZone.y, goalZone.width, goalZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("GOAL", goalZone.x + goalZone.width / 2, goalZone.y + goalZone.height / 2 + 5); }
             if (spikes) {
                 ctx.fillStyle = spikeColor;
                 spikes.forEach(spike => {
@@ -412,14 +313,13 @@
                 player.isDashing = true; player.dashTimer = dashDuration;
                 if (keys.left) player.dashDirection = -1;
                 else if (keys.right) player.dashDirection = 1;
-                else player.dashDirection = (player.x < gameWidth / 2 ? 1 : -1); // Simple default
+                else player.dashDirection = (player.x < gameWidth / 2 ? 1 : -1);
                 if (player.dashDirection === 0) player.dashDirection = 1;
             }
         }
 
         function gameLoop() { requestAnimationFrame(gameLoop); update(); draw(); }
 
-        // Event Listeners (Keyboard)
         window.addEventListener('keydown', function(e) {
             if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; }
             if (e.key === 'ArrowLeft') keys.left = true;
@@ -434,14 +334,12 @@
             if (e.key === 'ArrowUp' || e.key === ' ') keys.up = false;
         });
 
-        // Fullscreen API Logic
         function openFullscreen(elem) { if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
         function closeFullscreen() { if (document.exitFullscreen) document.exitFullscreen(); else if (document.mozCancelFullScreen) document.mozCancelFullScreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); else if (document.msExitFullscreen) document.msExitFullscreen(); }
         fullscreenBtn.addEventListener('click', function() { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); });
         function updateFullscreenButtonText() { fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen"; }
         document.addEventListener('fullscreenchange', updateFullscreenButtonText); document.addEventListener('mozfullscreenchange', updateFullscreenButtonText); document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText); document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
 
-        // Initial Setup
         setupLevel(currentLevel);
         updateFullscreenButtonText();
         gameLoop();
