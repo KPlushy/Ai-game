@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HTML Parkour - Full Map View</title>
+    <title>HTML Parkour - Mobile & Cooldowns</title>
     <style>
-        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; }
+        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; -webkit-user-select: none; -ms-user-select: none; user-select: none; /* Prevent text selection */ }
         #gameContainer { display: flex; flex-direction: column; align-items: center; background-color: #E6E6FA; padding: 10px; box-sizing: border-box; border-radius: 8px; }
         #fullscreenBtn { margin-bottom: 10px; padding: 8px 15px; background-color: #6A0DAD; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; width: 90%; max-width: 340px; }
         #fullscreenBtn:hover { background-color: #8A2BE2; }
@@ -13,6 +13,53 @@
         #controlsInfo { margin-top: 10px; padding: 10px; background-color: rgba(74, 0, 114, 0.8); border-radius: 5px; text-align: center; width: 90%; max-width: 340px; }
         #controlsInfo p { margin: 5px 0; }
         #messageDisplay { min-height: 1.2em; font-weight: bold; }
+
+        /* Mobile Controls Styling */
+        #mobileControls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            display: none; /* Hidden by default, shown via JS or media query */
+            justify-content: space-between;
+            align-items: flex-end; /* Align larger action buttons with smaller move buttons */
+            background-color: rgba(0,0,0,0.1); /* Slight background for visibility */
+            z-index: 100;
+        }
+        .mobile-btn {
+            padding: 15px;
+            font-size: 1.5em;
+            background-color: rgba(106, 13, 173, 0.7); /* Purple, slightly transparent */
+            color: white;
+            border: 2px solid rgba(74,0,114, 0.9);
+            border-radius: 10px;
+            cursor: pointer;
+            min-width: 60px; /* Minimum touch target size */
+            text-align: center;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+        .mobile-btn:active {
+            background-color: rgba(138, 43, 226, 0.9); /* BlueViolet when active */
+        }
+        #movementControls {
+            display: flex;
+            gap: 10px;
+        }
+        #actionControls {
+            display: flex;
+            gap: 10px;
+        }
+        /* Show mobile controls if touch is primary input (simplistic detection) */
+        @media (pointer: coarse) {
+            #mobileControls {
+                display: flex;
+            }
+            #controlsInfo .keyboard-only { /* Hide keyboard specific instructions */
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -20,55 +67,63 @@
         <button id="fullscreenBtn">Go Fullscreen</button>
         <canvas id="gameCanvas"></canvas>
         <div id="controlsInfo">
-            <p><strong>Controls:</strong></p>
-            <p>Left/Right Arrows: Move | Up Arrow/Space: Jump</p>
-            <p>X: Place Block | C: Dash</p>
+            <p class="keyboard-only"><strong>Controls:</strong> Left/Right Arrows: Move | Up Arrow/Space: Jump</p>
+            <p class="keyboard-only">X: Place Block | C: Dash</p>
             <p id="blockCount">Blocks: 3</p>
             <p id="levelDisplay">Level: 1</p>
+            <p id="dashCooldownDisplay">Dash: Ready</p>
             <p id="messageDisplay"></p>
         </div>
     </div>
+
+    <!-- Mobile Gamepad -->
+    <div id="mobileControls">
+        <div id="movementControls">
+            <button id="btnLeft" class="mobile-btn">◀</button>
+            <button id="btnRight" class="mobile-btn">▶</button>
+        </div>
+        <div id="actionControls">
+            <button id="btnPlace" class="mobile-btn">🧱</button> <!-- Block emoji -->
+            <button id="btnDash" class="mobile-btn">💨</button> <!-- Dash emoji -->
+            <button id="btnJump" class="mobile-btn">▲</button>
+        </div>
+    </div>
+
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const blockCountDisplay = document.getElementById('blockCount');
         const levelDisplay = document.getElementById('levelDisplay');
+        const dashCooldownDisplay = document.getElementById('dashCooldownDisplay');
         const messageDisplay = document.getElementById('messageDisplay');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const gameContainer = document.getElementById('gameContainer');
 
-        // These are canvas dimensions
-        let canvasGameWidth = 360;
-        let canvasGameHeight = 500;
-        canvas.width = canvasGameWidth;
-        canvas.height = canvasGameHeight;
-
-        // These are actual world dimensions for the current level
-        let levelActualWidth = canvasGameWidth;
-        let levelActualHeight = canvasGameHeight; // Assume level content fits within this default vertical space
+        let canvasGameWidth = 360; let canvasGameHeight = 500;
+        canvas.width = canvasGameWidth; canvas.height = canvasGameHeight;
+        let levelActualWidth = canvasGameWidth; let levelActualHeight = canvasGameHeight;
 
         const gravity = 0.5; const playerSpeed = 3.5; const jumpStrength = -11;
         const dashSpeed = 9; const dashDuration = 150; const maxBlocks = 3;
         const blockWidth = 40; const blockHeight = 20;
         const playerBaseWidth = 30; const playerBaseHeight = 30;
+        const playerDashCooldownTime = 2000; // 2 seconds
 
         const groundColor = '#6A0DAD'; const playerColor = '#8A2BE2'; const blockColor = '#9932CC';
         const spikeColor = '#4B0082'; const startColor = '#7FFF00'; const goalColor = '#FFD700';
         const enemyColor = '#FF4500'; const projectileColor = '#FF8C00';
         const gameBackgroundColor = '#E6E6FA';
 
-        let player = { x: 50, y: canvasGameHeight - 80, width: playerBaseWidth, height: playerBaseHeight, dx: 0, dy: 0, onGround: false, blocksAvailable: maxBlocks, isDashing: false, dashTimer: 0, dashDirection: 0 };
-        // No camera object needed for full map view
+        let player = { x: 50, y: canvasGameHeight - 80, width: playerBaseWidth, height: playerBaseHeight, dx: 0, dy: 0, onGround: false, blocksAvailable: maxBlocks, isDashing: false, dashTimer: 0, dashDirection: 0, dashCooldownTimer: 0 };
         let placedBlocks = []; let currentLevel = 1; let isLevelTransitioning = false;
         let keys = { left: false, right: false, up: false };
 
         let groundSegments = []; let startZone, goalZone, spikes;
         let enemies = []; let projectiles = [];
-        let drawScale = 1; // For scaling the world to the canvas
+        let drawScale = 1;
 
-        const definedLevels = [ /* ... First 5 defined levels, ensure they have levelActualWidth ... */
-            // Make sure Y values in defined levels are within a 0 to `canvasGameHeight` range
+        const definedLevels = [ /* ... First 5 defined levels (ensure they have levelActualWidth & Height)... */
             { name: "Full View Intro", messageOnLoad: "Whole map visible!", levelActualWidth: canvasGameWidth * 1.5, levelActualHeight: canvasGameHeight, groundSegments: [ { x: 0, y: canvasGameHeight - 40, width: canvasGameWidth * 1.5, height: 40 } ], startZone: { x: 30, y: canvasGameHeight - 70, width: 60, height: 30 }, goalZone: { x: canvasGameWidth * 1.5 - 90, y: canvasGameHeight - 70, width: 60, height: 30 }, spikes: [ { x: canvasGameWidth * 0.75 - 15, y: canvasGameHeight - 60, width: 30, height: 20 } ], enemies: [] },
             { name: "Wider Gaps", messageOnLoad: "Longer jumps needed.", levelActualWidth: canvasGameWidth * 2, levelActualHeight: canvasGameHeight, groundSegments: [ { x: 0, y: canvasGameHeight - 40, width: canvasGameWidth * 0.4, height: 40 }, { x: canvasGameWidth * 0.5, y: canvasGameHeight - 60, width: canvasGameWidth * 0.3, height: 60 }, { x: canvasGameWidth * 0.9, y: canvasGameHeight - 40, width: canvasGameWidth * 0.4, height: 40 }, { x: canvasGameWidth * 1.5, y: canvasGameHeight - 50, width: canvasGameWidth * 0.5, height: 50 } ], startZone: { x: 50, y: canvasGameHeight - 70, width: 60, height: 30 }, goalZone: { x: canvasGameWidth * 2 - 100, y: canvasGameHeight - 80, width: 60, height: 30 }, spikes: [ { x: canvasGameWidth * 0.4 + 10, y: canvasGameHeight - 20, width: canvasGameWidth*0.1-20, height: 20}, { x: canvasGameWidth * 0.6, y: canvasGameHeight - 80, width: 30, height: 20 }], enemies: [{x: canvasGameWidth * 0.55, y: canvasGameHeight - 80 - 20, type: 'shooter'}]},
             { name: "Block Crossing", messageOnLoad: "Use blocks wisely.", levelActualWidth: canvasGameWidth * 2.5, levelActualHeight: canvasGameHeight, groundSegments: [ { x: 0, y: canvasGameHeight - 40, width: canvasGameWidth * 0.6, height: 40 }, { x: canvasGameWidth * 1.2, y: canvasGameHeight - 40, width: canvasGameWidth * 1.3, height: 40 } ], startZone: { x: 50, y: canvasGameHeight - 70, width: 60, height: 30 }, goalZone: { x: canvasGameWidth * 2.5 - 100, y: canvasGameHeight - 70, width: 60, height: 30 }, spikes: [ { x: canvasGameWidth * 1.5, y: canvasGameHeight - 60, width: 30, height: 20 } ], enemies: [{x: canvasGameWidth * 1.3, y: canvasGameHeight - 60 - 20, type: 'shooter'}]},
@@ -77,305 +132,254 @@
         ];
         const numDefinedLevels = definedLevels.length;
 
-        function generateProceduralLevel(levelNumber) {
+        function generateProceduralLevel(levelNumber) { /* ... same as before (with goal placement fix and sky island logic) ... */
             const effectiveLevelNum = levelNumber - numDefinedLevels;
-            const currentLevelActualWidth = canvasGameWidth * (2 + Math.floor(effectiveLevelNum / 2.5)); // Width scales up
-            levelActualWidth = Math.min(currentLevelActualWidth, canvasGameWidth * 15); // Cap width
-            levelActualHeight = canvasGameHeight; // For scaling, assume content primarily within this vertical band
+            const currentLevelActualWidth = canvasGameWidth * (2 + Math.floor(effectiveLevelNum / 2.5));
+            levelActualWidth = Math.min(currentLevelActualWidth, canvasGameWidth * 15);
+            levelActualHeight = canvasGameHeight;
 
             let config = {
                 name: `Procedural Lvl ${levelNumber}`,
                 messageOnLoad: `Level ${levelNumber}: Expansive View!`,
                 levelActualWidth: levelActualWidth,
-                levelActualHeight: levelActualHeight, // Store for scaling reference
+                levelActualHeight: levelActualHeight,
                 groundSegments: [],
                 startZone: { x: 30 + Math.random()*20, y: canvasGameHeight - 70, width: 60, height: 30 },
                 goalZone: { x: levelActualWidth - 90 - Math.random()*30, y: canvasGameHeight - 70, width: 60, height: 30 },
-                spikes: [],
-                enemies: []
+                spikes: [], enemies: []
             };
 
-            // --- Procedural Ground & Sky Island Generation ---
-            let currentX = 0;
-            let lastPlatformY = canvasGameHeight - 40;
-            const minPlatformWidth = 60; // Make platforms a bit smaller on average due to full view
-            const maxPlatformWidth = canvasGameWidth * 0.4;
+            let currentX = 0; let lastPlatformY = canvasGameHeight - 40;
+            const minPlatformWidth = 60; const maxPlatformWidth = canvasGameWidth * 0.4;
             const maxMainGapWidth = playerBaseWidth * 2.5 + blockWidth;
-            const maxYVariation = 180; // Allow more verticality for sky islands
-            let platformCount = 0;
+            const maxYVariation = 180; let platformCount = 0;
 
             while (currentX < config.levelActualWidth) {
                 let platformWidth = minPlatformWidth + Math.random() * (maxPlatformWidth - minPlatformWidth);
                 platformWidth = Math.min(platformWidth, config.levelActualWidth - currentX);
-                let platformY = lastPlatformY;
-                let isSky = false;
-
-                if (platformCount > 0 && Math.random() < 0.75) { // Chance to change Y
-                    if (Math.random() < 0.4 + effectiveLevelNum * 0.015) { // Chance for actual sky island
-                        platformY = 80 + Math.random() * (canvasGameHeight - 250); // Higher up
-                        isSky = true;
-                    } else { // Varied ground platform
-                        platformY = (canvasGameHeight - 80 - maxYVariation/2) + (Math.random() * maxYVariation);
-                    }
+                let platformY = lastPlatformY; let isSky = false;
+                if (platformCount > 0 && Math.random() < 0.75) {
+                    if (Math.random() < 0.4 + effectiveLevelNum * 0.015) { platformY = 80 + Math.random() * (canvasGameHeight - 250); isSky = true; }
+                    else { platformY = (canvasGameHeight - 80 - maxYVariation/2) + (Math.random() * maxYVariation); }
                     platformY = Math.max(80, Math.min(canvasGameHeight - 30, platformY));
                 }
                 config.groundSegments.push({ x: currentX, y: platformY, width: platformWidth, height: isSky ? (20 + Math.random()*15) : (canvasGameHeight - platformY), isSkyIsland: isSky});
-                currentX += platformWidth;
-                lastPlatformY = platformY; // Or some other logic if gaps are big
-                platformCount++;
-
-                if (currentX < config.levelActualWidth - maxPlatformWidth * 1.5) { // Ensure space for at least one more platform after gap
-                    let gapWidth = (playerBaseWidth + 20) + Math.random() * (maxMainGapWidth - (playerBaseWidth + 20));
-                    currentX += gapWidth;
-                }
+                currentX += platformWidth; lastPlatformY = platformY; platformCount++;
+                if (currentX < config.levelActualWidth - maxPlatformWidth * 1.5) { let gapWidth = (playerBaseWidth + 20) + Math.random() * (maxMainGapWidth - (playerBaseWidth + 20)); currentX += gapWidth; }
             }
-            // Ensure start and goal are on a platform
             if (config.groundSegments.length > 0) {
                 const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland && p.x < canvasGameWidth*0.3) || config.groundSegments[0];
                 config.startZone.y = firstPlatform.y - config.startZone.height -1;
-                config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x);
-                config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x);
+                config.startZone.x = Math.max(firstPlatform.x + 5, Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x));
 
                 let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.65);
-                let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < canvasGameHeight - 120);
-                if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[potentialGoalPlatforms.length-1]; // Prefer last platforms
-                if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1];
+                let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < canvasGameHeight - 120 && p.width >= config.goalZone.width);
+                if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms.filter(p=>p.width >= config.goalZone.width)[potentialGoalPlatforms.filter(p=>p.width >= config.goalZone.width).length-1];
+                if (!goalPlatform) goalPlatform = config.groundSegments.filter(p=>p.width >= config.goalZone.width)[config.groundSegments.filter(p=>p.width >= config.goalZone.width).length-1];
+                if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1]; // Absolute fallback
 
-                config.goalZone.y = goalPlatform.y - config.goalZone.height - 1; // Place ON TOP
-                // Ensure y is not below its own height if platform is too thin (unlikely here but good check)
-                config.goalZone.y = Math.max(config.goalZone.height, config.goalZone.y);
 
+                config.goalZone.y = goalPlatform.y - config.goalZone.height - 1;
+                config.goalZone.y = Math.max(config.goalZone.height, config.goalZone.y); // Ensure not below its own height
                 config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ;
-                config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x);
-                config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x);
+                config.goalZone.x = Math.max(goalPlatform.x + 5, Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x));
 
-            } else { /* Failsafe ... */ }
+            } else { config.groundSegments.push({x: 0, y: canvasGameHeight - 40, width: config.levelActualWidth, height: 40}); config.startZone.y = canvasGameHeight - 70; config.goalZone.y = canvasGameHeight - 70;}
 
-            // --- Procedural Spike Generation --- (Level number = spikes)
-            const numSpikesToGenerate = levelNumber;
-            let spikeW = Math.max(3, 20 - Math.floor(levelNumber / 5)); // Spikes get extremely narrow
-            const spikeH = 20;
-
+            const numSpikesToGenerate = levelNumber; let spikeW = Math.max(3, 20 - Math.floor(levelNumber / 5)); const spikeH = 20;
             for (let i = 0; i < numSpikesToGenerate; i++) {
                 let sX, sY;
                 if (config.groundSegments.length > 0 && Math.random() < 0.7) {
                     let platform = config.groundSegments[Math.floor(Math.random() * config.groundSegments.length)];
-                    sX = platform.x + (Math.random() * platform.width);
-                    sY = platform.y - spikeH; // On top by default
-                    if (Math.random() < 0.4 + Math.min(0.5, effectiveLevelNum * 0.02)) { // More sky/floating spikes
-                        sY = platform.y - spikeH - 10 - (Math.random() * (platform.isSkyIsland ? 50 : 100));
-                    }
-                } else { // Pure random sky spike
-                    sX = Math.random() * config.levelActualWidth;
-                    sY = 50 + Math.random() * (config.levelActualHeight - 100);
-                }
-                sX = Math.max(0, Math.min(sX, config.levelActualWidth - spikeW));
-                sY = Math.max(10, sY); // Keep off very top edge
+                    sX = platform.x + (Math.random() * platform.width); sY = platform.y - spikeH;
+                    if (Math.random() < 0.4 + Math.min(0.5, effectiveLevelNum * 0.02)) { sY = platform.y - spikeH - 10 - (Math.random() * (platform.isSkyIsland ? 50 : 100)); }
+                } else { sX = Math.random() * config.levelActualWidth; sY = 50 + Math.random() * (config.levelActualHeight - 100); }
+                sX = Math.max(0, Math.min(sX, config.levelActualWidth - spikeW)); sY = Math.max(10, sY);
                 config.spikes.push({ x: sX, y: sY, width: spikeW, height: spikeH });
             }
-
-            // --- Procedural Enemy Generation ---
             const numEnemies = Math.min(15, Math.floor(effectiveLevelNum / 2.5));
             for (let i = 0; i < numEnemies; i++) {
-                let groundPlatforms = config.groundSegments.filter(p => p.width > 50); // Enemies on substantial platforms
+                let groundPlatforms = config.groundSegments.filter(p => p.width > 50);
                 if (groundPlatforms.length > 0) {
                     let platform = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)];
-                    let eX = platform.x + 15 + Math.random() * (platform.width - 30);
-                    let eY = platform.y - 20; // Enemy height
+                    let eX = platform.x + 15 + Math.random() * (platform.width - 30); let eY = platform.y - 20;
                     config.enemies.push({ x: eX, y: eY, type: 'shooter', width: 20, height: 20, shootCooldown: 150 - Math.min(100, effectiveLevelNum * 2.5), shootTimer: Math.random() * 60 });
                 }
             }
-
-            if (levelNumber > 60) config.messageOnLoad = `Lvl ${levelNumber}: Miniature Madness!`;
-            else if (levelNumber > 35) config.messageOnLoad = `Lvl ${levelNumber}: The Whole World!`;
-
+            if (levelNumber > 60) config.messageOnLoad = `Lvl ${levelNumber}: Miniature Madness!`; else if (levelNumber > 35) config.messageOnLoad = `Lvl ${levelNumber}: The Whole World!`;
             config.spikes = config.spikes.filter(s => !(rectCollision(s, config.startZone) || rectCollision(s, config.goalZone)));
             config.enemies = config.enemies.filter(e => !rectCollision(e, config.startZone) && !rectCollision(e, config.goalZone));
             return config;
         }
 
-        function setupLevel(levelNumber) {
-            isLevelTransitioning = false;
-            player.dx = 0; player.dy = 0; player.onGround = false;
-            player.blocksAvailable = maxBlocks; placedBlocks = [];
-            enemies = []; projectiles = [];
+
+        function setupLevel(levelNumber) { /* ... same logic for choosing defined vs procedural ... */
+            isLevelTransitioning = false; player.dx = 0; player.dy = 0; player.onGround = false;
+            player.blocksAvailable = maxBlocks; placedBlocks = []; enemies = []; projectiles = [];
+            player.dashCooldownTimer = 0; // Reset dash cooldown on new level
 
             let levelConfig;
-            if (levelNumber <= numDefinedLevels) {
-                const definedConfig = definedLevels[levelNumber - 1];
-                levelConfig = JSON.parse(JSON.stringify(definedConfig));
-                messageDisplay.textContent = levelConfig.messageOnLoad || `Level ${levelNumber}: ${levelConfig.name || ''}`;
-            } else {
-                levelConfig = generateProceduralLevel(levelNumber);
-                if (!messageDisplay.textContent && levelConfig.messageOnLoad) messageDisplay.textContent = levelConfig.messageOnLoad;
-                else if (!messageDisplay.textContent) messageDisplay.textContent = `Level ${levelNumber}: ${levelConfig.name || (levelNumber + " Spikes!")}`;
-            }
+            if (levelNumber <= numDefinedLevels) { const definedConfig = definedLevels[levelNumber - 1]; levelConfig = JSON.parse(JSON.stringify(definedConfig)); messageDisplay.textContent = levelConfig.messageOnLoad || `Level ${levelNumber}: ${levelConfig.name || ''}`; }
+            else { levelConfig = generateProceduralLevel(levelNumber); if (!messageDisplay.textContent && levelConfig.messageOnLoad) messageDisplay.textContent = levelConfig.messageOnLoad; else if (!messageDisplay.textContent) messageDisplay.textContent = `Level ${levelNumber}: ${levelConfig.name || (levelNumber + " Spikes!")}`; }
 
             levelActualWidth = levelConfig.levelActualWidth || canvasGameWidth;
-            levelActualHeight = levelConfig.levelActualHeight || canvasGameHeight; // Use defined or default
-
-            // Calculate scale based on the larger dimension
+            levelActualHeight = levelConfig.levelActualHeight || canvasGameHeight;
             drawScale = Math.min(canvasGameWidth / levelActualWidth, canvasGameHeight / levelActualHeight);
-            // If one dimension is much smaller than the canvas, we might want to adjust scale
-            // to fill more space, but for "show whole map" this simple min scale is typical.
-            // To prevent distortion if aspect ratios differ too much:
-            // drawScale = Math.min(canvasGameWidth / levelActualWidth, canvasGameHeight / levelActualHeight);
-            // Or, if you always want to fit width and accept vertical cropping/empty space:
-            // drawScale = canvasGameWidth / levelActualWidth;
-
 
             groundSegments = levelConfig.groundSegments ? JSON.parse(JSON.stringify(levelConfig.groundSegments)) : [{x:0, y:canvasGameHeight-40, width:levelActualWidth, height:40}];
             startZone = { ...(levelConfig.startZone || { x: 30, y: canvasGameHeight - 70, width: 60, height: 30 }) };
             goalZone = { ...(levelConfig.goalZone || { x: levelActualWidth - 90, y: canvasGameHeight - 70, width: 60, height: 30 }) };
             spikes = levelConfig.spikes ? JSON.parse(JSON.stringify(levelConfig.spikes)) : [];
-            if (levelConfig.enemies) {
-                 enemies = levelConfig.enemies.map(e => ({...e, shootTimer: e.shootTimer || Math.random() * e.shootCooldown }));
-            }
+            if (levelConfig.enemies) { enemies = levelConfig.enemies.map(e => ({...e, shootTimer: e.shootTimer || Math.random() * e.shootCooldown })); }
 
             player.x = startZone.x; player.y = startZone.y - player.height -1;
             updateUI();
         }
 
-        function rectCollision(rect1, rect2) { /* ... same ... */
-             if (!rect1 || !rect2) return false;
-            return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
-        }
-        function resetPlayer() { /* ... same, but no camera update ... */
-            player.x = startZone.x; player.y = startZone.y - player.height - 1;
-            player.dx = 0; player.dy = 0; player.onGround = false;
-            projectiles = [];
-            messageDisplay.textContent = "Ouch! Try again.";
-            setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again.") messageDisplay.textContent = ""; }, 1500);
-        }
+        function rectCollision(rect1, rect2) { if (!rect1 || !rect2) return false; return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y; }
+        function resetPlayer() { player.x = startZone.x; player.y = startZone.y - player.height - 1; player.dx = 0; player.dy = 0; player.onGround = false; projectiles = []; player.dashCooldownTimer = 0; /* Reset dash cooldown on death too */ messageDisplay.textContent = "Ouch! Try again."; setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again.") messageDisplay.textContent = ""; }, 1500); }
 
         function update() {
             if (isLevelTransitioning) return;
-            // Player movement (existing, just ensure it respects levelActualWidth)
+
+            // Dash Cooldown Timer Update
+            if (player.dashCooldownTimer > 0) {
+                player.dashCooldownTimer -= 1000 / 60; // Approx ms per frame
+                player.dashCooldownTimer = Math.max(0, player.dashCooldownTimer);
+            }
+
+            // Player movement
             if (player.isDashing) { player.dashTimer -= 1000 / 60; if (player.dashTimer <= 0) { player.isDashing = false; player.dx = 0; } else { player.dx = player.dashDirection * dashSpeed; player.dy = 0; } }
             else { player.dx = 0; if (keys.left) player.dx = -playerSpeed; if (keys.right) player.dx = playerSpeed; }
             player.x += player.dx;
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > levelActualWidth) player.x = levelActualWidth - player.width;
-
+            if (player.x < 0) player.x = 0; if (player.x + player.width > levelActualWidth) player.x = levelActualWidth - player.width;
             if (!player.isDashing) { player.dy += gravity; player.y += player.dy; }
             player.onGround = false;
 
-            // Ground Collision
-            groundSegments.forEach(segment => {
-                if (player.x + player.width > segment.x && player.x < segment.x + segment.width) {
-                    if (player.y + player.height >= segment.y && player.y + player.height - player.dy <= segment.y + (segment.isSkyIsland ? segment.height : 1) ) { // Sky islands are solid blocks
-                        player.y = segment.y - player.height; player.dy = 0; player.onGround = true;
-                    }
-                    // Basic side collision with ground (can be improved)
-                    if (player.onGround || player.dy === 0 || (player.y + player.height > segment.y && player.y < segment.y + segment.height)) {
-                        if (player.dx > 0 && player.x + player.width >= segment.x && player.x + player.width - player.dx < segment.x) {
-                            player.x = segment.x - player.width; player.dx = 0;
-                        } else if (player.dx < 0 && player.x <= segment.x + segment.width && player.x - player.dx > segment.x + segment.width) {
-                            player.x = segment.x + segment.width; player.dx = 0;
-                        }
-                    }
-                }
-            });
-            // Placed Block Collision
-            placedBlocks.forEach(block => {
-                 if (rectCollision(player, block)) {
-                    if (player.dy > 0 && (player.y + player.height - player.dy) <= block.y + 1) {
-                        player.y = block.y - player.height; player.dy = 0; player.onGround = true;
-                    } else if (player.y + player.height > block.y && player.y < block.y + block.height) {
-                        if (player.dx > 0 && player.x + player.width >= block.x && player.x + player.width - player.dx < block.x) {
-                            player.x = block.x - player.width; player.dx = 0;
-                        } else if (player.dx < 0 && player.x <= block.x + block.width && player.x - player.dx > block.x + block.width) {
-                            player.x = block.x + block.width; player.dx = 0;
-                        }
-                    }
-                }
-            });
+            // Ground & Placed Block Collision (same as before)
+            groundSegments.forEach(segment => { if (player.x + player.width > segment.x && player.x < segment.x + segment.width) { if (player.y + player.height >= segment.y && player.y + player.height - player.dy <= segment.y + (segment.isSkyIsland ? segment.height : 1) ) { player.y = segment.y - player.height; player.dy = 0; player.onGround = true; } if (player.onGround || player.dy === 0 || (player.y + player.height > segment.y && player.y < segment.y + segment.height)) { if (player.dx > 0 && player.x + player.width >= segment.x && player.x + player.width - player.dx < segment.x) { player.x = segment.x - player.width; player.dx = 0; } else if (player.dx < 0 && player.x <= segment.x + segment.width && player.x - player.dx > segment.x + segment.width) { player.x = segment.x + segment.width; player.dx = 0; } } } });
+            placedBlocks.forEach(block => { if (rectCollision(player, block)) { if (player.dy > 0 && (player.y + player.height - player.dy) <= block.y + 1) { player.y = block.y - player.height; player.dy = 0; player.onGround = true; } else if (player.y + player.height > block.y && player.y < block.y + block.height) { if (player.dx > 0 && player.x + player.width >= block.x && player.x + player.width - player.dx < block.x) { player.x = block.x - player.width; player.dx = 0; } else if (player.dx < 0 && player.x <= block.x + block.width && player.x - player.dx > block.x + block.width) { player.x = block.x + block.width; player.dx = 0; } } } });
+
 
             // Spike Collision
             if (spikes) spikes.forEach(spike => { if (rectCollision(player, spike)) resetPlayer(); });
+
             // Enemy Update & Shooting
             enemies.forEach(enemy => {
                 enemy.shootTimer--;
                 if (enemy.shootTimer <= 0) {
                     const distToPlayerX = player.x - enemy.x; const distToPlayerY = player.y - enemy.y;
-                    // For full map view, range check might need to be very large or enemies always shoot if on "screen" conceptually
-                    // Let's assume they shoot if the player is within a large "world" range
-                    const worldShootRangeX = canvasGameWidth * 2 / drawScale; // Effective large range
-                    const worldShootRangeY = canvasGameHeight * 1.5 / drawScale;
-
+                    const worldShootRangeX = canvasGameWidth * 2.5 / drawScale; // Increased effective range for full map view
+                    const worldShootRangeY = canvasGameHeight * 2 / drawScale;
                     if (Math.abs(distToPlayerX) < worldShootRangeX && Math.abs(distToPlayerY) < worldShootRangeY) {
                         let projDx = Math.sign(distToPlayerX); let projDy = 0;
-                        if (Math.abs(distToPlayerY) > player.height) projDy = Math.sign(distToPlayerY) * 0.4; // Simple Y aim
-                        const projectileSpeed = 4 + Math.min(3, Math.floor((currentLevel-numDefinedLevels)/10)); // Proj speed increases
+                        if (Math.abs(distToPlayerY) > player.height*2) projDy = Math.sign(distToPlayerY) * 0.3;
+                        const projectileSpeed = 3.5 + Math.min(2.5, Math.floor((currentLevel-numDefinedLevels)/12));
                         projectiles.push({ x: enemy.x + enemy.width / 2 - 2.5, y: enemy.y + enemy.height / 2 - 2.5, width: 5, height: 5, dx: projDx * projectileSpeed, dy: projDy * projectileSpeed, active: true });
                         enemy.shootTimer = enemy.shootCooldown + (Math.random() * 30 - 15);
-                    } else { enemy.shootTimer = 30; }
+                    } else { enemy.shootTimer = 45; }
                 }
             });
-            // Projectile Update & Collision
+            // Projectile Update & Collision (Shots go through walls)
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i]; p.x += p.dx; p.y += p.dy;
-                if (p.x < -p.width || p.x > levelActualWidth || p.y < -p.height || p.y > levelActualHeight + 50) { projectiles.splice(i, 1); continue; } // Use world bounds
+                if (p.x < -p.width*2 || p.x > levelActualWidth + p.width*2 || p.y < -p.height*2 || p.y > levelActualHeight + p.height*2) { projectiles.splice(i, 1); continue; } // Generous off-world removal
                 if (rectCollision(p, player)) { projectiles.splice(i, 1); resetPlayer(); continue; }
-                let hitObject = false;
-                for(let j = placedBlocks.length - 1; j >=0; j--) { if (rectCollision(p, placedBlocks[j])) { projectiles.splice(i, 1); hitObject=true; break; } } if(hitObject) continue;
-                for(let j = groundSegments.length - 1; j >=0; j--) { if (rectCollision(p, groundSegments[j])) { projectiles.splice(i, 1); hitObject=true; break; } } if(hitObject) continue;
+                // NO collision with blocks or ground for projectiles
             }
 
             // Start/Goal Zones
-            if (startZone && rectCollision(player, startZone)) { /* ... refill logic ... */ }
+            if (startZone && rectCollision(player, startZone)) { if (player.blocksAvailable < maxBlocks) { player.blocksAvailable = maxBlocks; messageDisplay.textContent = "Blocks Refilled!"; updateUI(); setTimeout(() => { if(messageDisplay.textContent === "Blocks Refilled!") messageDisplay.textContent = ""; }, 1500); } }
             if (goalZone && rectCollision(player, goalZone) && !isLevelTransitioning) {
                 isLevelTransitioning = true; currentLevel++;
-                // ... (message logic for advancing)
-                setTimeout(() => { setupLevel(currentLevel); }, 600); // Even FASTER TRANSITION
+                let nextLevelName = (currentLevel <= numDefinedLevels && definedLevels[currentLevel-1] && definedLevels[currentLevel-1].name) ? ": " + definedLevels[currentLevel-1].name : "";
+                messageDisplay.textContent = `Advancing to Level ${currentLevel}${nextLevelName}...`;
+                setTimeout(() => { setupLevel(currentLevel); }, 500); // VERY FAST TRANSITION
             }
-            if (player.y > levelActualHeight + player.height * 2) resetPlayer(); // Fall off bottom of world
-            // No camera update needed
+            if (player.y > levelActualHeight + player.height * 3) resetPlayer();
+
+            updateUI(); // Update UI for dash cooldown
         }
 
-        function draw() {
-            ctx.fillStyle = gameBackgroundColor; ctx.fillRect(0, 0, canvasGameWidth, canvasGameHeight); // Clear canvas
-            ctx.save();
-            ctx.scale(drawScale, drawScale); // Apply scaling for "whole map" view
-
-            // Draw Ground Segments
-            ctx.fillStyle = groundColor;
-            groundSegments.forEach(segment => {
-                // For non-sky islands, ensure they visually go to the "bottom" of the scaled world view
-                let h = segment.isSkyIsland ? segment.height : (levelActualHeight - segment.y);
-                ctx.fillRect(segment.x, segment.y, segment.width, h);
-            });
-
-            // Draw Start/Goal, Spikes, Enemies, Projectiles, Placed Blocks, Player
-            // (These draw calls are the same, they just operate in world coordinates now scaled by ctx.scale)
+        function draw() { /* ... same as previous with ctx.scale(drawScale, drawScale) ... */
+            ctx.fillStyle = gameBackgroundColor; ctx.fillRect(0, 0, canvasGameWidth, canvasGameHeight);
+            ctx.save(); ctx.scale(drawScale, drawScale);
+            ctx.fillStyle = groundColor; groundSegments.forEach(segment => { let h = segment.isSkyIsland ? segment.height : (levelActualHeight - segment.y); ctx.fillRect(segment.x, segment.y, segment.width, h); });
             if (startZone) { ctx.fillStyle = startColor; ctx.fillRect(startZone.x, startZone.y, startZone.width, startZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("START", startZone.x + startZone.width / 2, startZone.y + startZone.height / 2 + 5); }
             if (goalZone) { ctx.fillStyle = goalColor; ctx.fillRect(goalZone.x, goalZone.y, goalZone.width, goalZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("GOAL", goalZone.x + goalZone.width / 2, goalZone.y + goalZone.height / 2 + 5); }
             if (spikes) { ctx.fillStyle = spikeColor; spikes.forEach(spike => { ctx.beginPath(); ctx.moveTo(spike.x, spike.y + spike.height); ctx.lineTo(spike.x + spike.width / 2, spike.y); ctx.lineTo(spike.x + spike.width, spike.y + spike.height); ctx.closePath(); ctx.fill(); }); }
             enemies.forEach(enemy => { ctx.fillStyle = enemyColor; ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height); });
             projectiles.forEach(p => { ctx.fillStyle = projectileColor; ctx.fillRect(p.x, p.y, p.width, p.height); });
-            ctx.fillStyle = blockColor;
-            placedBlocks.forEach(block => ctx.fillRect(block.x, block.y, block.width, block.height));
-            ctx.fillStyle = player.isDashing ? '#FF69B4' : playerColor;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-
-            ctx.restore(); // Remove scaling if any fixed UI elements were to be drawn after
+            ctx.fillStyle = blockColor; placedBlocks.forEach(block => ctx.fillRect(block.x, block.y, block.width, block.height));
+            ctx.fillStyle = player.isDashing ? '#FF69B4' : playerColor; ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.restore();
         }
 
-        function updateUI() { /* ... same ... */ }
-        function placeBlock() { /* ... same (uses player.x, player.y which are world coords) ... */ }
-        function performDash() { /* ... same (dash direction might feel different with full map view) ... */ }
+        function updateUI() {
+            blockCountDisplay.textContent = `Blocks: ${player.blocksAvailable}`;
+            levelDisplay.textContent = `Level: ${currentLevel}`;
+            if (player.dashCooldownTimer <= 0) {
+                dashCooldownDisplay.textContent = "Dash: Ready";
+            } else {
+                dashCooldownDisplay.textContent = `Dash: Cool ${(player.dashCooldownTimer / 1000).toFixed(1)}s`;
+            }
+        }
+        function placeBlock() { if (player.blocksAvailable > 0) { placedBlocks.push({ x: player.x + (player.width / 2) - (blockWidth / 2), y: player.y + player.height, width: blockWidth, height: blockHeight }); player.blocksAvailable--; } else { messageDisplay.textContent = "Out of blocks!"; setTimeout(() => { if(messageDisplay.textContent === "Out of blocks!") messageDisplay.textContent = ""; }, 1500); } updateUI(); }
+        function performDash() {
+            if (!player.isDashing && player.dashCooldownTimer <= 0) {
+                player.isDashing = true; player.dashTimer = dashDuration;
+                player.dashCooldownTimer = playerDashCooldownTime; // Start cooldown
+                if (keys.left) player.dashDirection = -1;
+                else if (keys.right) player.dashDirection = 1;
+                else { // Simple dash direction based on where player is looking relative to center of "world view" if scaled
+                    let playerCenterX = player.x + player.width/2;
+                    let worldViewCenterX = levelActualWidth / 2; // Simple center of world
+                    player.dashDirection = (playerCenterX < worldViewCenterX ? 1 : -1);
+                }
+                if (player.dashDirection === 0) player.dashDirection = 1;
+            }
+            updateUI();
+        }
+        function doJump() { // Encapsulate jump logic for reuse by mobile button
+            if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; }
+        }
+
         function gameLoop() { requestAnimationFrame(gameLoop); update(); draw(); }
-        // Event Listeners & Fullscreen (same as before)
-        // ... (Copy from previous version) ...
-        window.addEventListener('keydown', function(e) { if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; } if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); keys.up = true; if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; } } if (e.key === 'x' || e.key === 'X') placeBlock(); if (e.key === 'c' || e.key === 'C') performDash(); });
-        window.addEventListener('keyup', function(e) { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; if (e.key === 'ArrowUp' || e.key === ' ') keys.up = false; });
+
+        // Keyboard Event Listeners
+        window.addEventListener('keydown', function(e) { if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; } if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); doJump(); } if (e.key === 'x' || e.key === 'X') placeBlock(); if (e.key === 'c' || e.key === 'C') performDash(); });
+        window.addEventListener('keyup', function(e) { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; });
+
+        // Mobile Controls Event Listeners
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
+        const btnJump = document.getElementById('btnJump');
+        const btnPlace = document.getElementById('btnPlace');
+        const btnDash = document.getElementById('btnDash');
+
+        function handleTouchStart(e, keyName, actionFn) {
+            e.preventDefault();
+            if (keyName) keys[keyName] = true;
+            if (actionFn) actionFn();
+        }
+        function handleTouchEnd(e, keyName) {
+            e.preventDefault();
+            if (keyName) keys[keyName] = false;
+        }
+
+        if (btnLeft) { btnLeft.addEventListener('touchstart', (e) => handleTouchStart(e, 'left')); btnLeft.addEventListener('touchend', (e) => handleTouchEnd(e, 'left')); }
+        if (btnRight) { btnRight.addEventListener('touchstart', (e) => handleTouchStart(e, 'right')); btnRight.addEventListener('touchend', (e) => handleTouchEnd(e, 'right')); }
+        if (btnJump) btnJump.addEventListener('touchstart', (e) => handleTouchStart(e, null, doJump));
+        if (btnPlace) btnPlace.addEventListener('touchstart', (e) => handleTouchStart(e, null, placeBlock));
+        if (btnDash) btnDash.addEventListener('touchstart', (e) => handleTouchStart(e, null, performDash));
+
+
+        // Fullscreen API Logic
         function openFullscreen(elem) { if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
         function closeFullscreen() { if (document.exitFullscreen) document.exitFullscreen(); else if (document.mozCancelFullScreen) document.mozCancelFullScreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); else if (document.msExitFullscreen) document.msExitFullscreen(); }
         fullscreenBtn.addEventListener('click', function() { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); });
         function updateFullscreenButtonText() { fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen"; }
         document.addEventListener('fullscreenchange', updateFullscreenButtonText); document.addEventListener('mozfullscreenchange', updateFullscreenButtonText); document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText); document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
-
 
         setupLevel(currentLevel);
         updateFullscreenButtonText();
