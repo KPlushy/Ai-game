@@ -3,63 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HTML Mobile Parkour</title>
+    <title>HTML Mobile Parkour - Level Editor Base</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #301934; /* Darker purple for area outside game */
-            font-family: Arial, sans-serif;
-            color: white;
-        }
-        #gameContainer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #E6E6FA; /* Light purple background for the container in fullscreen */
-            padding: 10px;
-            box-sizing: border-box;
-            border-radius: 8px;
-        }
-        #fullscreenBtn {
-            margin-bottom: 10px;
-            padding: 8px 15px;
-            background-color: #6A0DAD;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            width: 90%;
-            max-width: 340px;
-        }
-        #fullscreenBtn:hover {
-            background-color: #8A2BE2;
-        }
-        canvas {
-            border: 2px solid #4A0072;
-            display: block;
-        }
-        #controlsInfo {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: rgba(74, 0, 114, 0.8);
-            border-radius: 5px;
-            text-align: center;
-            width: 90%;
-            max-width: 340px;
-        }
-        #controlsInfo p {
-            margin: 5px 0;
-        }
-        #messageDisplay {
-            min-height: 1.2em; /* Reserve space for messages */
-            font-weight: bold;
-        }
+        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; }
+        #gameContainer { display: flex; flex-direction: column; align-items: center; background-color: #E6E6FA; padding: 10px; box-sizing: border-box; border-radius: 8px; }
+        #fullscreenBtn { margin-bottom: 10px; padding: 8px 15px; background-color: #6A0DAD; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; width: 90%; max-width: 340px; }
+        #fullscreenBtn:hover { background-color: #8A2BE2; }
+        canvas { border: 2px solid #4A0072; display: block; }
+        #controlsInfo { margin-top: 10px; padding: 10px; background-color: rgba(74, 0, 114, 0.8); border-radius: 5px; text-align: center; width: 90%; max-width: 340px; }
+        #controlsInfo p { margin: 5px 0; }
+        #messageDisplay { min-height: 1.2em; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -118,98 +71,139 @@
 
         let placedBlocks = [];
         let currentLevel = 1;
-        let isLevelTransitioning = false; // Prevents rapid level up
+        let isLevelTransitioning = false;
 
         let keys = { left: false, right: false, up: false };
 
         let ground, startZone, goalZone, spikes;
 
+        // ------------------------------------------------------------------
+        //  LEVEL DEFINITIONS - THIS IS WHERE YOU EDIT/CREATE LEVELS!
+        // ------------------------------------------------------------------
+        const definedLevels = [
+            { // Level 1
+                name: "The First Step",
+                messageOnLoad: "Welcome! Use arrows, space, X, and C.",
+                groundY: gameHeight - 40,
+                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
+                goalZone: { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 },
+                spikes: [
+                    { x: gameWidth / 2 - 15, y: gameHeight - 60, width: 30, height: 20 }
+                ]
+            },
+            { // Level 2
+                name: "A Little Jump",
+                messageOnLoad: "Mind the gap!",
+                groundY: gameHeight - 40,
+                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
+                goalZone: { x: gameWidth - 80, y: gameHeight - 150, width: 60, height: 30 }, // Higher goal
+                spikes: [
+                    { x: 120, y: gameHeight - 60, width: 40, height: 20 },
+                    { x: 190, y: gameHeight - 60, width: 40, height: 20 }
+                ]
+            },
+            { // Level 3
+                name: "Block Placement",
+                messageOnLoad: "Time to use those blocks (X key)!",
+                groundY: gameHeight - 40,
+                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
+                goalZone: { x: gameWidth - 70, y: 100, width: 60, height: 30 }, // Even higher
+                spikes: [
+                    { x: 100, y: gameHeight - 60, width: 30, height: 20 },
+                    { x: 200, y: gameHeight - 120, width: 30, height: 20 }, // Floating spike
+                    { x: 150, y: gameHeight - 60, width: 30, height: 20 }
+                ]
+            },
+            { // Level 4 - Example of a trickier one
+                name: "Spike Alley",
+                messageOnLoad: "Careful steps!",
+                groundY: gameHeight - 40,
+                startZone: { x: 10, y: gameHeight - 70, width: 60, height: 30 },
+                goalZone: { x: gameWidth - 60, y: gameHeight - 70, width: 50, height: 30 },
+                spikes: [
+                    { x: 90, y: gameHeight - 60, width: 25, height: 20 },
+                    { x: 125, y: gameHeight - 60, width: 25, height: 20 },
+                    { x: 160, y: gameHeight - 60, width: 25, height: 20 },
+                    { x: 195, y: gameHeight - 60, width: 25, height: 20 },
+                    { x: 230, y: gameHeight - 60, width: 25, height: 20 },
+                    { x: 140, y: gameHeight - 100, width: 60, height: 20 } // Floating one
+                ]
+            }
+            // --- ADD MORE LEVELS HERE ---
+            // Copy an existing level object, paste it here with a comma after the previous one,
+            // and then change its properties (name, messageOnLoad, groundY, startZone, goalZone, spikes).
+            // Example:
+            // ,
+            // { // Level 5
+            //     name: "Your Custom Level",
+            //     messageOnLoad: "Get ready!",
+            //     groundY: gameHeight - 50, // slightly higher ground
+            //     startZone: { x: 20, y: gameHeight - 80, width: 50, height: 25 },
+            //     goalZone: { x: gameWidth - 90, y: 80, width: 70, height: 40 },
+            //     spikes: [
+            //         { x: 100, y: gameHeight - 70, width: 30, height: 20 },
+            //         { x: 150, y: gameHeight - 150, width: 60, height: 20 },
+            //         { x: 220, y: gameHeight - 70, width: 30, height: 20 }
+            //     ]
+            // }
+        ];
+        // ------------------------------------------------------------------
+
         function setupLevel(levelNumber) {
-            isLevelTransitioning = false; // Reset flag at the start of new level setup
-            player.x = 50;
-            player.y = gameHeight - 80; // Initial Y, will be adjusted by startZone
-            player.dx = 0;
-            player.dy = 0;
+            isLevelTransitioning = false;
+            player.dx = 0; player.dy = 0;
             player.onGround = false;
             player.blocksAvailable = maxBlocks;
             placedBlocks = [];
 
-            // Clear generic messages, keep difficulty messages if they were just set
-            if (messageDisplay.textContent.startsWith("Advancing to")) {
-                 messageDisplay.textContent = "";
+            let currentLevelConfig;
+            if (definedLevels.length === 0) { // Fallback if no levels defined
+                messageDisplay.textContent = "No levels defined!";
+                ground = { x: 0, y: gameHeight - 40, width: gameWidth, height: 40 };
+                startZone = { x: 10, y: gameHeight - 70, width: 60, height: 30 };
+                goalZone = { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 };
+                spikes = [];
+                player.x = startZone.x + startZone.width/2 - player.width/2;
+                player.y = startZone.y - player.height -1;
+                updateUI();
+                return;
             }
 
+            // Loop through defined levels if currentLevel exceeds the count
+            let levelIndex = (levelNumber - 1) % definedLevels.length;
+            currentLevelConfig = definedLevels[levelIndex];
 
-            // --- Dynamic Level Generation & Difficulty ---
-            let newSpikes = [];
-            let newGoal = { x: gameWidth - 70, y: gameHeight - 70, width: 60, height: 30 };
-            let newGroundY = gameHeight - 40;
+            // Apply level configuration
+            ground = { x: 0, y: currentLevelConfig.groundY, width: gameWidth, height: currentLevelConfig.groundY > 0 ? gameHeight - currentLevelConfig.groundY : 0 };
+            startZone = { ...currentLevelConfig.startZone }; // Use spread to avoid modifying original
+            goalZone = { ...currentLevelConfig.goalZone };
+            spikes = currentLevelConfig.spikes.map(s => ({...s})); // Deep copy spikes too
 
-            // Ground: For now, ground is fixed. Could be varied later.
-            ground = { x: 0, y: newGroundY, width: gameWidth, height: 40 };
-            startZone = { x: 10, y: newGroundY - 30, width: 60, height: 30 };
-            player.y = startZone.y - player.height -1; // Place player on start platform
+            player.x = startZone.x + startZone.width / 2 - player.width / 2;
+            player.y = startZone.y - player.height - 1;
 
-            // Difficulty scaling for spikes
-            const baseNumSpikes = 1;
-            let numSpikesToGenerate = baseNumSpikes + Math.floor(levelNumber / 2.5); // Increases faster
-            numSpikesToGenerate = Math.min(numSpikesToGenerate, 8); // Max 8 spikes
-
-            for (let i = 0; i < numSpikesToGenerate; i++) {
-                let spikeX, spikeY, spikeW;
-                let attempts = 0;
-                let validPosition = false;
-                while (!validPosition && attempts < 20) {
-                    spikeW = 30 + Math.random() * 15;
-                    spikeX = 80 + Math.random() * (gameWidth - 160 - spikeW); // Avoid start/end zones typically
-
-                    if (levelNumber > 3 && Math.random() > 0.4) { // Chance for "floating" spikes
-                        spikeY = newGroundY - 20 - (Math.random() * 120); // Floating spike
-                        spikeY = Math.max(80, spikeY); // Not too high initially
-                    } else {
-                        spikeY = newGroundY - 20; // Spike on the ground
-                    }
-                    let newSpike = { x: spikeX, y: spikeY, width: spikeW, height: 20 };
-
-                    // Basic check: not too close to start, not overlapping other spikes too much
-                    let tooCloseToStart = newSpike.x < startZone.x + startZone.width + 20;
-                    let overlapsOtherSpike = newSpikes.some(s => Math.abs(s.x - newSpike.x) < s.width);
-
-                    if (!tooCloseToStart && !overlapsOtherSpike) {
-                        validPosition = true;
-                        newSpikes.push(newSpike);
-                    }
-                    attempts++;
-                }
-                if (!validPosition && newSpikes.length <= i) { // Fallback if complex placement fails
-                     newSpikes.push({ x: 100 + (i * 60 % (gameWidth - 150)), y: newGroundY - 20, width: 35, height: 20});
-                }
+            // Set initial message for the level
+            if (currentLevelConfig.messageOnLoad) {
+                messageDisplay.textContent = currentLevelConfig.messageOnLoad;
+            } else if (messageDisplay.textContent.startsWith("Advancing to")) {
+                messageDisplay.textContent = ""; // Clear "Advancing to..." if no specific message
             }
-            spikes = newSpikes;
 
-            // Vary Goal Position
-            if (levelNumber === 1) {
-                newGoal.x = gameWidth - 70;
-                newGoal.y = newGroundY - 30;
-            } else {
-                newGoal.x = (gameWidth / 2) + (Math.random() * (gameWidth / 2 - newGoal.width - 20));
-                if (levelNumber % 3 === 0 || levelNumber > 7) { // Higher goals more often
-                    newGoal.y = 80 + Math.random() * (gameHeight / 2.5);
+            // Difficulty messages based on absolute level number (currentLevel)
+            // This allows difficulty to ramp up even if looping through fewer defined levels
+            if (currentLevel > 10 && currentLevel % 10 === 1 && levelIndex === 0) { // Only on first level of a new "decade"
+                messageDisplay.textContent = `Level ${currentLevel}! Difficulty Ramping Up!`;
+            } else if (currentLevel > 20 && currentLevel % 5 === 1 && levelIndex === 0) {
+                messageDisplay.textContent = `Level ${currentLevel}! Almost Impossible!`;
+            }
+
+            // If we've looped AND it's not a specific difficulty milestone, clear the general "Advancing to" message
+            if (levelNumber > definedLevels.length && !messageDisplay.textContent.includes("Ramping Up") && !messageDisplay.textContent.includes("Impossible")) {
+                if (currentLevelConfig.messageOnLoad) {
+                    // message is already set
                 } else {
-                    newGoal.y = newGroundY - 30 - (Math.random() * 80);
+                     messageDisplay.textContent = `Looping: ${currentLevelConfig.name || `Level ${levelIndex + 1}`}`;
                 }
-                newGoal.y = Math.max(60, newGoal.y); // Keep on screen
-                newGoal.y = Math.min(newGoal.y, newGroundY - newGoal.height - 5);
-            }
-            goalZone = newGoal;
-
-            // Set specific difficulty messages if this level is a milestone
-            if (levelNumber > 10 && levelNumber % 10 === 1) {
-                messageDisplay.textContent = `Level ${levelNumber}! Difficulty Ramping Up!`;
-            } else if (levelNumber > 20 && (levelNumber % 5 === 1 || levelNumber % 5 === 0) ) {
-                messageDisplay.textContent = `Level ${levelNumber}! Almost Impossible!`;
-            } else if (messageDisplay.textContent.startsWith("Advancing to")) { // Clear generic advance message if no specific one applies
-                messageDisplay.textContent = "";
             }
 
 
@@ -225,25 +219,21 @@
         }
 
         function resetPlayer() {
-            // Use the current level's startZone for accurate reset
             const currentStart = startZone || { x: 10, y: (ground ? ground.y : gameHeight - 40) - 30, width: 60, height: 30 };
             player.x = currentStart.x + currentStart.width / 2 - player.width / 2;
             player.y = currentStart.y - player.height - 1;
-            player.dx = 0;
-            player.dy = 0;
-            player.onGround = false;
+            player.dx = 0; player.dy = 0; player.onGround = false;
             messageDisplay.textContent = "Ouch! Try again.";
             setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again.") messageDisplay.textContent = ""; }, 1500);
         }
 
         function update() {
+            if (isLevelTransitioning) return; // Don't update game logic during transition
+
             if (player.isDashing) {
                 player.dashTimer -= 1000 / 60;
-                if (player.dashTimer <= 0) {
-                    player.isDashing = false; player.dx = 0;
-                } else {
-                    player.dx = player.dashDirection * dashSpeed; player.dy = 0;
-                }
+                if (player.dashTimer <= 0) { player.isDashing = false; player.dx = 0; }
+                else { player.dx = player.dashDirection * dashSpeed; player.dy = 0; }
             } else {
                 player.dx = 0;
                 if (keys.left) player.dx = -playerSpeed;
@@ -251,9 +241,7 @@
             }
             player.x += player.dx;
 
-            if (!player.isDashing) {
-                player.dy += gravity; player.y += player.dy;
-            }
+            if (!player.isDashing) { player.dy += gravity; player.y += player.dy; }
             player.onGround = false;
 
             if (ground && player.y + player.height > ground.y) {
@@ -276,11 +264,8 @@
             if (player.x + player.width > gameWidth) player.x = gameWidth - player.width;
 
             if (spikes) {
-                spikes.forEach(spike => {
-                    if (rectCollision(player, spike)) resetPlayer();
-                });
+                spikes.forEach(spike => { if (rectCollision(player, spike)) resetPlayer(); });
             }
-
             if (startZone && rectCollision(player, startZone)) {
                 if (player.blocksAvailable < maxBlocks) {
                     player.blocksAvailable = maxBlocks;
@@ -293,30 +278,34 @@
                 isLevelTransitioning = true;
                 currentLevel++;
 
-                let transitionMessage = `Advancing to Level ${currentLevel}...`;
-                // Check upcoming level for difficulty message
-                if (currentLevel > 10 && currentLevel % 10 === 1) {
-                    transitionMessage = `Level ${currentLevel}! Difficulty Ramping Up!`;
-                } else if (currentLevel > 20 && (currentLevel % 5 === 1 || currentLevel % 5 === 0)) {
-                     transitionMessage = `Level ${currentLevel}! Almost Impossible!`;
+                let transitionMessageBase = `Advancing to Level ${currentLevel}`;
+                if (currentLevel > definedLevels.length) {
+                     let loopedLevelIndex = (currentLevel - 1) % definedLevels.length;
+                     let loopedLevelName = definedLevels[loopedLevelIndex].name || `Level ${loopedLevelIndex + 1}`;
+                     transitionMessageBase = `Looping to: ${loopedLevelName} (as Level ${currentLevel})`;
                 }
-                messageDisplay.textContent = transitionMessage;
+                messageDisplay.textContent = transitionMessageBase + "...";
 
-                setTimeout(() => {
-                    setupLevel(currentLevel);
-                }, 1000); // Quicker room shift
+
+                // Check for actual difficulty ramp-up based on absolute currentLevel
+                 if (currentLevel > 10 && currentLevel % 10 === 1 && (currentLevel-1) % definedLevels.length === 0) {
+                    messageDisplay.textContent = `Level ${currentLevel}! Difficulty Ramping Up!`;
+                } else if (currentLevel > 20 && currentLevel % 5 === 1 && (currentLevel-1) % definedLevels.length === 0) {
+                     messageDisplay.textContent = `Level ${currentLevel}! Almost Impossible!`;
+                }
+
+                setTimeout(() => { setupLevel(currentLevel); }, 1200); // Slightly longer for message
             }
-
             if (player.y > canvas.height + player.height) resetPlayer();
         }
 
         function draw() {
             ctx.fillStyle = gameBackgroundColor;
             ctx.fillRect(0, 0, gameWidth, gameHeight);
-
             if (ground) {
                 ctx.fillStyle = groundColor;
-                ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
+                ctx.fillRect(ground.x, 0, ground.width, ground.y); // Error in original:fillRect(ground.x, ground.y, ground.width, ground.height) this is for platforms
+                ctx.fillRect(ground.x, ground.y, ground.width, gameHeight - ground.y ); // Actual ground
             }
             if (startZone) {
                 ctx.fillStyle = startColor;
@@ -341,9 +330,7 @@
                 });
             }
             ctx.fillStyle = blockColor;
-            placedBlocks.forEach(block => {
-                ctx.fillRect(block.x, block.y, block.width, block.height);
-            });
+            placedBlocks.forEach(block => ctx.fillRect(block.x, block.y, block.width, block.height));
             ctx.fillStyle = player.isDashing ? '#FF69B4' : playerColor;
             ctx.fillRect(player.x, player.y, player.width, player.height);
         }
@@ -355,17 +342,13 @@
 
         function placeBlock() {
             if (player.blocksAvailable > 0) {
-                placedBlocks.push({
-                    x: player.x + (player.width / 2) - (blockWidth / 2),
-                    y: player.y + player.height, width: blockWidth, height: blockHeight
-                });
+                placedBlocks.push({ x: player.x + (player.width / 2) - (blockWidth / 2), y: player.y + player.height, width: blockWidth, height: blockHeight });
                 player.blocksAvailable--; updateUI();
             } else {
                 messageDisplay.textContent = "Out of blocks!";
                 setTimeout(() => { if(messageDisplay.textContent === "Out of blocks!") messageDisplay.textContent = ""; }, 1500);
             }
         }
-
         function performDash() {
             if (!player.isDashing) {
                 player.isDashing = true; player.dashTimer = dashDuration;
@@ -376,21 +359,13 @@
             }
         }
 
-        function gameLoop() {
-            update(); draw(); requestAnimationFrame(gameLoop);
-        }
+        function gameLoop() { requestAnimationFrame(gameLoop); update(); draw(); }
 
         window.addEventListener('keydown', function(e) {
-            if (document.activeElement === fullscreenBtn && e.key === 'Enter') {
-                if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen();
-                return;
-            }
+            if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; }
             if (e.key === 'ArrowLeft') keys.left = true;
             if (e.key === 'ArrowRight') keys.right = true;
-            if (e.key === 'ArrowUp' || e.key === ' ') {
-                e.preventDefault(); keys.up = true;
-                if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; }
-            }
+            if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); keys.up = true; if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; } }
             if (e.key === 'x' || e.key === 'X') placeBlock();
             if (e.key === 'c' || e.key === 'C') performDash();
         });
@@ -400,28 +375,11 @@
             if (e.key === 'ArrowUp' || e.key === ' ') keys.up = false;
         });
 
-        function openFullscreen(elem) {
-            if (elem.requestFullscreen) elem.requestFullscreen();
-            else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
-            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-        }
-        function closeFullscreen() {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
-        }
-        fullscreenBtn.addEventListener('click', function() {
-            if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen();
-        });
-        function updateFullscreenButtonText() {
-            fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen";
-        }
-        document.addEventListener('fullscreenchange', updateFullscreenButtonText);
-        document.addEventListener('mozfullscreenchange', updateFullscreenButtonText);
-        document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText);
-        document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
+        function openFullscreen(elem) { if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
+        function closeFullscreen() { if (document.exitFullscreen) document.exitFullscreen(); else if (document.mozCancelFullScreen) document.mozCancelFullScreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); else if (document.msExitFullscreen) document.msExitFullscreen(); }
+        fullscreenBtn.addEventListener('click', function() { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); });
+        function updateFullscreenButtonText() { fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen"; }
+        document.addEventListener('fullscreenchange', updateFullscreenButtonText); document.addEventListener('mozfullscreenchange', updateFullscreenButtonText); document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText); document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
 
         setupLevel(currentLevel);
         updateFullscreenButtonText();
