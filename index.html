@@ -3,9 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HTML Parkour - Boss Fights & Updates!</title>
+    <title>This game was made by AI!</title>
     <style>
-        body { margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #301934;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        /* --- Title Screen Styles --- */
+        #titleScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #301934; /* Match body or use a distinct color */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Highest */
+            opacity: 1;
+            transition: opacity 0.7s ease-out;
+            text-align: center;
+        }
+        #titleScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #titleScreen h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: #E6E6FA;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #playButton {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background-color: #6A0DAD;
+            color: white;
+            border: 2px solid #4A0072;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+        #playButton:hover {
+            background-color: #8A2BE2;
+        }
+        #playButton:active {
+            transform: scale(0.95);
+        }
+
+        /* --- Game Container Styles --- */
         #gameContainer {
             display: flex;
             flex-direction: column;
@@ -16,7 +73,15 @@
             border-radius: 8px;
             margin-bottom: 10px;
             position: relative;
+            opacity: 0; /* Initially hidden */
+            pointer-events: none; /* Initially not interactive */
+            transition: opacity 0.7s 0.3s ease-in; /* Fade in after title fades out slightly */
         }
+        #gameContainer.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         #fullscreenBtn { margin-bottom: 10px; padding: 8px 15px; background-color: #6A0DAD; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; width: 90%; max-width: 340px; }
         #fullscreenBtn:hover { background-color: #8A2BE2; }
         canvas { border: 2px solid #4A0072; display: block; }
@@ -77,7 +142,13 @@
     </style>
 </head>
 <body>
-    <div id="gameContainer">
+    <!-- Title Screen Added -->
+    <div id="titleScreen">
+        <h1>This game was made by AI!</h1>
+        <button id="playButton">Play</button>
+    </div>
+
+    <div id="gameContainer"> <!-- Initially hidden by opacity and pointer-events -->
         <button id="fullscreenBtn">Go Fullscreen</button>
         <div id="bossHpContainer">
             <div id="bossHpFill"></div>
@@ -108,6 +179,7 @@
     </div>
 
     <script>
+        // --- DOM Elements ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const blockCountDisplay = document.getElementById('blockCount');
@@ -118,6 +190,8 @@
         const dashCooldownUIDisplay = document.getElementById('dashCooldownUI');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const gameContainer = document.getElementById('gameContainer');
+        const titleScreen = document.getElementById('titleScreen'); // New
+        const playButton = document.getElementById('playButton');   // New
 
         const mobileControlsContainer = document.getElementById('mobileControls');
         const mobileLeftBtn = document.getElementById('mobileLeftBtn');
@@ -131,7 +205,7 @@
         const bossHpFill = document.getElementById('bossHpFill');
         const bossHpText = document.getElementById('bossHpText');
 
-
+        // --- Game Constants ---
         let gameWidth = 360; let gameHeight = 500;
         canvas.width = gameWidth; canvas.height = gameHeight;
         let levelActualWidth = gameWidth;
@@ -140,7 +214,7 @@
         const dashBaseSpeed = 9; const dashDuration = 150; const baseDashCooldownDuration = 500;
         const maxBlocks = 3; const blockWidth = 40; const blockHeight = 20;
         const playerBaseWidth = 30; const playerBaseHeight = 30;
-        const powerUpSize = 30; // CHANGED: Berries are now 2x bigger
+        const powerUpSize = 30;
         const powerUpActiveDuration = 10000;
 
         const groundColor = '#6A0DAD'; const playerColor = '#8A2BE2'; const blockColor = '#9932CC';
@@ -157,12 +231,13 @@
         const BOSS_LASER_SHOOT_INTERVAL = 1500;
         const BOSS_PROJECTILE_SPEED = 4;
         const NUM_ATTACK_BERRIES = 4;
-        const ENEMY_DEFAULT_SHOOT_COOLDOWN = 180; // CHANGED: 3 seconds (180 frames at 60fps)
+        const ENEMY_DEFAULT_SHOOT_COOLDOWN = 60; // CHANGED: 1 second (60 frames at 60fps)
 
         const bossAlienColor = '#00CED1';
         const attackBerryColor = '#FFA500';
         const bossLaserColor = '#FF0000';
 
+        // --- Game State Variables ---
         let player = {
             x: 50, y: gameHeight - 80, width: playerBaseWidth, height: playerBaseHeight,
             dx: 0, dy: 0, onGround: false,
@@ -184,17 +259,19 @@
         let isBossLevel = false;
         let boss = null;
         let bossProjectiles = [];
+        let gameRunning = false; // To control game loop start
 
-        const definedLevels = [
-            { name: "Horizontal Scroll!", messageOnLoad: "Welcome!", levelActualWidth: gameWidth * 1.5, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 1.5, height: 40 } ], startZone: { x: 30, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 1.5 - 90, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.75 - 15, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [], powerUps: [{x: gameWidth * 0.5, y: gameHeight - 150 - (powerUpSize/2), type: 'blockBerry'}] }, // Adjusted Y for larger berry
-            { name: "Gaps and Platforms", messageOnLoad: "Watch your step!", levelActualWidth: gameWidth * 2, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 0.5, y: gameHeight - 60, width: gameWidth * 0.3, height: 60 }, { x: gameWidth * 0.9, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 1.5, y: gameHeight - 50, width: gameWidth * 0.5, height: 50 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 2 - 100, y: gameHeight - 80, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.4 + 10, y: gameHeight - 20, width: gameWidth*0.1-20, height: 20}, { x: gameWidth * 0.6, y: gameHeight - 80, width: 30, height: 20 }, { x: gameWidth * 1.2, y: gameHeight - 20, width: gameWidth*0.3-20, height:20 } ], enemies: [{x: gameWidth * 0.55, y: gameHeight - 80 - 20, type: 'shooter', shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN}], powerUps: [{x: gameWidth * 1.6, y: gameHeight - 180 - (powerUpSize/2), type: 'speedBerry'}] }, // Adjusted Y
+        const definedLevels = [ /* ... same defined levels ... */
+            { name: "Horizontal Scroll!", messageOnLoad: "Welcome!", levelActualWidth: gameWidth * 1.5, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 1.5, height: 40 } ], startZone: { x: 30, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 1.5 - 90, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.75 - 15, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [], powerUps: [{x: gameWidth * 0.5, y: gameHeight - 150 - (powerUpSize/2), type: 'blockBerry'}] },
+            { name: "Gaps and Platforms", messageOnLoad: "Watch your step!", levelActualWidth: gameWidth * 2, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 0.5, y: gameHeight - 60, width: gameWidth * 0.3, height: 60 }, { x: gameWidth * 0.9, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 1.5, y: gameHeight - 50, width: gameWidth * 0.5, height: 50 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 2 - 100, y: gameHeight - 80, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.4 + 10, y: gameHeight - 20, width: gameWidth*0.1-20, height: 20}, { x: gameWidth * 0.6, y: gameHeight - 80, width: 30, height: 20 }, { x: gameWidth * 1.2, y: gameHeight - 20, width: gameWidth*0.3-20, height:20 } ], enemies: [{x: gameWidth * 0.55, y: gameHeight - 80 - 20, type: 'shooter', shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN}], powerUps: [{x: gameWidth * 1.6, y: gameHeight - 180 - (powerUpSize/2), type: 'speedBerry'}] },
             { name: "Block Challenge", messageOnLoad: "Use blocks!", levelActualWidth: gameWidth * 2.5, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.6, height: 40 }, { x: gameWidth * 1.2, y: gameHeight - 40, width: gameWidth * 1.3, height: 40 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 2.5 - 100, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth * 1.5, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [{x: gameWidth * 1.3, y: gameHeight - 60 - 20, type: 'shooter', shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN}], powerUps: [] },
-            { name: "Floating Goals", messageOnLoad: "Reach high!", levelActualWidth: gameWidth * 2, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.8, height: 40 }, { x: gameWidth * 1.2, y: gameHeight - 40, width: gameWidth * 0.8, height: 40 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 1.5, y: gameHeight - 200, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.5, y: gameHeight - 60, width: 30, height: 20 }, { x: gameWidth * 1.0, y: gameHeight - 20, width: gameWidth*0.2-20, height:20 }, { x: gameWidth * 1.5, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [], powerUps: [{x: gameWidth * 0.3, y: 100 - (powerUpSize/2), type: 'blockBerry'}] }, // Adjusted Y
+            { name: "Floating Goals", messageOnLoad: "Reach high!", levelActualWidth: gameWidth * 2, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.8, height: 40 }, { x: gameWidth * 1.2, y: gameHeight - 40, width: gameWidth * 0.8, height: 40 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 1.5, y: gameHeight - 200, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.5, y: gameHeight - 60, width: 30, height: 20 }, { x: gameWidth * 1.0, y: gameHeight - 20, width: gameWidth*0.2-20, height:20 }, { x: gameWidth * 1.5, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [], powerUps: [{x: gameWidth * 0.3, y: 100 - (powerUpSize/2), type: 'blockBerry'}] },
             { name: "Spike Gauntlet Intro", messageOnLoad: "Precision!", levelActualWidth: gameWidth * 3, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth*3, height: 40 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 3 - 100, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: 200, y: gameHeight - 60, width: 20, height: 20 }, { x: 230, y: gameHeight - 60, width: 20, height: 20 }, { x: 400, y: gameHeight - 80, width: 20, height: 20 }, { x: 430, y: gameHeight - 60, width: 20, height: 20 }, { x: 600, y: gameHeight - 60, width: 20, height: 20 }, { x: 630, y: gameHeight - 80, width: 20, height: 20 }, { x: 660, y: gameHeight - 60, width: 20, height: 20 }, ], enemies: [{x: 300, y:gameHeight-60-20, type:'shooter', shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN}, {x:500, y:gameHeight-60-20, type:'shooter', shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN}], powerUps: [] },
         ];
         const numDefinedLevels = definedLevels.length;
 
-        function generateProceduralLevel(levelNumber) {
+        // --- Game Functions ---
+        function generateProceduralLevel(levelNumber) { /* ... same as before (uses ENEMY_DEFAULT_SHOOT_COOLDOWN) ... */
             const effectiveLevelNum = levelNumber - numDefinedLevels;
             const currentLevelActualWidth = gameWidth * (2.5 + Math.floor(effectiveLevelNum / 3));
             levelActualWidth = Math.min(currentLevelActualWidth, gameWidth * 10);
@@ -204,51 +281,15 @@
             if (config.groundSegments.length > 0) { const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland) || config.groundSegments[0]; config.startZone.y = firstPlatform.y - config.startZone.height -1; config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x); config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x); let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.7); let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < gameHeight - 100); if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[Math.floor(Math.random()*potentialGoalPlatforms.length)]; if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1]; config.goalZone.y = goalPlatform.y - config.goalZone.height -1; config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ; config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x); config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x); } else { config.groundSegments.push({x: 0, y: gameHeight - 40, width: config.levelActualWidth, height: 40}); config.startZone.y = gameHeight - 70; config.goalZone.y = gameHeight - 70; }
             const numSpikesToGenerate = levelNumber; let spikeW = Math.max(5, 25 - Math.floor(levelNumber / 4)); const spikeH = 20;
             for (let i = 0; i < numSpikesToGenerate; i++) { let sX, sY; if (config.groundSegments.length > 0 && Math.random() < 0.8) { let platform = config.groundSegments[Math.floor(Math.random() * config.groundSegments.length)]; sX = platform.x + (Math.random() * platform.width); if (Math.random() < 0.7 || platform.isSkyIsland) { sY = platform.y - spikeH; } else { sY = platform.y - spikeH - 10 - (Math.random() * 80); } } else { sX = Math.random() * config.levelActualWidth; sY = 60 + Math.random() * (gameHeight - 120); } sX = Math.max(0, Math.min(sX, config.levelActualWidth - spikeW)); sY = Math.max(20, sY); config.spikes.push({ x: sX, y: sY, width: spikeW, height: spikeH }); }
-
             const numEnemies = Math.min(10, Math.floor(effectiveLevelNum / 3));
-            for (let i = 0; i < numEnemies; i++) {
-                let groundPlatforms = config.groundSegments.filter(p => !p.isSkyIsland || p.width > 60);
-                if (groundPlatforms.length > 0) {
-                    let platform = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)];
-                    let eX = platform.x + 20 + Math.random() * (platform.width - 40);
-                    let eY = platform.y - 20;
-                    config.enemies.push({
-                        x: eX, y: eY, type: 'shooter', width: 20, height: 20,
-                        shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN, // CHANGED
-                        shootTimer: Math.random() * ENEMY_DEFAULT_SHOOT_COOLDOWN // CHANGED
-                    });
-                }
-            }
-            if (Math.random() < 0.4 + Math.min(0.2, effectiveLevelNum * 0.01)) {
-                let powerUpType = Math.random() < 0.5 ? 'blockBerry' : 'speedBerry';
-                let pX, pY; let attempts = 0; let placed = false;
-                while (!placed && attempts < 20) {
-                    let skyIslands = config.groundSegments.filter(p => p.isSkyIsland && p.y < gameHeight - 150);
-                    if (skyIslands.length > 0 && Math.random() < 0.7) {
-                        let island = skyIslands[Math.floor(Math.random() * skyIslands.length)];
-                        pX = island.x + (island.width / 2) - (powerUpSize / 2);
-                        pY = island.y - powerUpSize - 5; // Uses new powerUpSize
-                        placed = true;
-                    } else {
-                        pX = config.startZone.x + config.startZone.width + 50 + Math.random() * (config.levelActualWidth - 150 - config.startZone.x - config.startZone.width);
-                        pY = 60 + Math.random() * (gameHeight - 250 - powerUpSize); // Adjusted for new powerUpSize
-                        placed = true;
-                    }
-                    let tempPowerUpRect = {x: pX, y: pY, width: powerUpSize, height: powerUpSize};
-                    if(rectCollision(tempPowerUpRect, config.startZone) || rectCollision(tempPowerUpRect, config.goalZone) || config.spikes.some(s => rectCollision(tempPowerUpRect, s))) {
-                        placed = false;
-                    }
-                    attempts++;
-                }
-                if(placed){ config.powerUps.push({ x: pX, y: pY, type: powerUpType, collected: false, width: powerUpSize, height: powerUpSize }); }
-            }
+            for (let i = 0; i < numEnemies; i++) { let groundPlatforms = config.groundSegments.filter(p => !p.isSkyIsland || p.width > 60); if (groundPlatforms.length > 0) { let platform = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)]; let eX = platform.x + 20 + Math.random() * (platform.width - 40); let eY = platform.y - 20; config.enemies.push({ x: eX, y: eY, type: 'shooter', width: 20, height: 20, shootCooldown: ENEMY_DEFAULT_SHOOT_COOLDOWN, shootTimer: Math.random() * ENEMY_DEFAULT_SHOOT_COOLDOWN }); } }
+            if (Math.random() < 0.4 + Math.min(0.2, effectiveLevelNum * 0.01)) { let powerUpType = Math.random() < 0.5 ? 'blockBerry' : 'speedBerry'; let pX, pY; let attempts = 0; let placed = false; while (!placed && attempts < 20) { let skyIslands = config.groundSegments.filter(p => p.isSkyIsland && p.y < gameHeight - 150); if (skyIslands.length > 0 && Math.random() < 0.7) { let island = skyIslands[Math.floor(Math.random() * skyIslands.length)]; pX = island.x + (island.width / 2) - (powerUpSize / 2); pY = island.y - powerUpSize - 5; placed = true; } else { pX = config.startZone.x + config.startZone.width + 50 + Math.random() * (config.levelActualWidth - 150 - config.startZone.x - config.startZone.width); pY = 60 + Math.random() * (gameHeight - 250 - powerUpSize); placed = true; } let tempPowerUpRect = {x: pX, y: pY, width: powerUpSize, height: powerUpSize}; if(rectCollision(tempPowerUpRect, config.startZone) || rectCollision(tempPowerUpRect, config.goalZone) || config.spikes.some(s => rectCollision(tempPowerUpRect, s))) { placed = false; } attempts++; } if(placed){ config.powerUps.push({ x: pX, y: pY, type: powerUpType, collected: false, width: powerUpSize, height: powerUpSize }); } }
             if (levelNumber > 60) config.messageOnLoad = `Lvl ${levelNumber}: Unforgiving!`; else if (levelNumber > 35) config.messageOnLoad = `Lvl ${levelNumber}: Hostile Territory!`;
             config.spikes = config.spikes.filter(s => !(rectCollision(s, config.startZone) || rectCollision(s, config.goalZone)));
             config.enemies = config.enemies.filter(e => !rectCollision(e, config.startZone) && !rectCollision(e, config.goalZone));
             return config;
         }
-
-        function spawnAttackBerry(specificX, specificY) {
+        function spawnAttackBerry(specificX, specificY) { /* ... same as before ... */
             let berryX, berryY;
             if (specificX !== undefined && specificY !== undefined) {
                 berryX = specificX;
@@ -258,7 +299,7 @@
                 let validPosition = false;
                 while(!validPosition && attempts < 20) {
                     berryX = Math.random() * (levelActualWidth - powerUpSize - 40) + 20;
-                    berryY = gameHeight - 40 - powerUpSize - 5; // Uses new powerUpSize
+                    berryY = gameHeight - 40 - powerUpSize - 5;
                     let tempBerry = {x: berryX, y: berryY, width: powerUpSize, height: powerUpSize};
                     validPosition = !powerUpsInLevel.some(p => p.type === 'attackBerry' && rectCollision(tempBerry, p));
                     if (rectCollision(tempBerry, player)) validPosition = false;
@@ -266,7 +307,7 @@
                 }
                  if (!validPosition) {
                     berryX = (levelActualWidth / (NUM_ATTACK_BERRIES + 1)) * (powerUpsInLevel.filter(p=>p.type==='attackBerry').length + 1);
-                    berryY = gameHeight - 40 - powerUpSize - 5; // Uses new powerUpSize
+                    berryY = gameHeight - 40 - powerUpSize - 5;
                 }
             }
             powerUpsInLevel.push({
@@ -274,8 +315,7 @@
                 collected: false, width: powerUpSize, height: powerUpSize
             });
         }
-
-        function setupBossLevel(levelNumber) {
+        function setupBossLevel(levelNumber) { /* ... same as before ... */
             isBossLevel = true;
             levelActualWidth = gameWidth * 1.5;
             camera.x = (levelActualWidth - gameWidth) / 2;
@@ -306,9 +346,7 @@
             bossHpContainer.style.display = 'block';
             updateBossUI();
         }
-
-
-        function setupLevel(levelNumber) {
+        function setupLevel(levelNumber) { /* ... same as before (uses ENEMY_DEFAULT_SHOOT_COOLDOWN for defined levels) ... */
             isLevelTransitioning = false;
             isBossLevel = false;
             boss = null;
@@ -343,8 +381,8 @@
                 if (levelConfig.enemies) {
                      enemies = levelConfig.enemies.map(e => ({
                         ...e,
-                        shootCooldown: e.shootCooldown || ENEMY_DEFAULT_SHOOT_COOLDOWN, // CHANGED
-                        shootTimer: e.shootTimer || Math.random() * (e.shootCooldown || ENEMY_DEFAULT_SHOOT_COOLDOWN), // CHANGED
+                        shootCooldown: e.shootCooldown || ENEMY_DEFAULT_SHOOT_COOLDOWN,
+                        shootTimer: e.shootTimer || Math.random() * (e.shootCooldown || ENEMY_DEFAULT_SHOOT_COOLDOWN),
                         isMinion: false
                     }));
                 }
@@ -361,10 +399,8 @@
             }
             updateUI();
         }
-
-        function rectCollision(rect1, rect2) { return !(!rect1 || !rect2) && rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y; }
-
-        function resetPlayer() {
+        function rectCollision(rect1, rect2) { /* ... same as before ... */ return !(!rect1 || !rect2) && rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y; }
+        function resetPlayer() { /* ... same as before ... */
             deathCount++;
             if (isBossLevel && boss) {
                 messageDisplay.textContent = "Boss fight reset!";
@@ -392,8 +428,7 @@
             setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again." || messageDisplay.textContent === "Boss fight reset!") messageDisplay.textContent = ""; }, 1500);
             updateUI();
         }
-
-        function updateBoss(deltaTime) {
+        function updateBoss(deltaTime) { /* ... same as before ... */
             if (!boss || !boss.isAlive) return;
 
             boss.x += boss.dx;
@@ -431,7 +466,7 @@
                 if (boss.laserShootTimer <= 0) {
                     const dxToPlayer = (player.x + player.width/2) - (boss.x + boss.width/2);
                     const dyToPlayer = (player.y + player.height/2) - (boss.y + boss.height/2);
-                    const dist = Math.sqrt(dxToPlayer*dxToPlayer + dyToPlayer*dyToPlayer) || 1; // Avoid division by zero
+                    const dist = Math.sqrt(dxToPlayer*dxToPlayer + dyToPlayer*dyToPlayer) || 1;
 
                     bossProjectiles.push({
                         x: boss.x + boss.width / 2 - 5, y: boss.y + boss.height / 2 - 5,
@@ -444,20 +479,17 @@
             }
             updateBossUI();
         }
-
-        function updateBossUI() {
+        function updateBossUI() { /* ... same as before ... */
             if (isBossLevel && boss && boss.isAlive) {
                 const hpPercent = (boss.hp / boss.maxHp) * 100;
                 bossHpFill.style.width = hpPercent + '%';
                 bossHpText.textContent = `BOSS: ${boss.hp} / ${boss.maxHp}`;
-            } else if (isBossLevel && boss && !boss.isAlive) { // Boss defeated but UI might still be visible
+            } else if (isBossLevel && boss && !boss.isAlive) {
                  bossHpContainer.style.display = 'none';
             }
         }
-
-
-        function update() {
-            if (isLevelTransitioning) return;
+        function update() { /* ... same as before ... */
+            if (!gameRunning || isLevelTransitioning) return; // Check gameRunning flag
             const deltaTime = 1000 / 60;
 
             if (player.dashCooldownTimer > 0) player.dashCooldownTimer -= deltaTime;
@@ -502,7 +534,7 @@
                     pUp.collected = true;
                     if (pUp.type === 'attackBerry' && isBossLevel && boss && boss.isAlive) {
                         // Handled below
-                    } else if (pUp.type !== 'attackBerry') { // Don't show message for attack berries here
+                    } else if (pUp.type !== 'attackBerry') {
                         messageDisplay.textContent = `Collected ${pUp.type === 'blockBerry' ? 'Block Berry' : (pUp.type === 'speedBerry' ? 'Speed Berry' : 'Power Up')}!`;
                         setTimeout(() => { if(messageDisplay.textContent.startsWith("Collected")) messageDisplay.textContent = ""; }, 2000);
                         if (pUp.type === 'blockBerry') { player.infiniteBlocksActive = true; player.infiniteBlocksTimer = powerUpActiveDuration; }
@@ -529,7 +561,7 @@
                             messageDisplay.textContent = "BOSS DEFEATED!";
                             enemies = enemies.filter(e => !e.isMinion);
                             bossProjectiles = [];
-                            updateBossUI(); // Hide HP bar
+                            updateBossUI();
                             break;
                         }
                     }
@@ -545,7 +577,7 @@
 
 
             enemies.forEach(enemy => {
-                enemy.shootTimer--; // Frame-based timer for enemy shooting
+                enemy.shootTimer--;
                 if (enemy.shootTimer <= 0) {
                     const distToPlayerX = player.x - enemy.x;
                     const distToPlayerY = player.y - enemy.y;
@@ -556,7 +588,7 @@
                         if (Math.abs(distToPlayerY) > 20) { projDy = Math.sign(distToPlayerY) * 0.5; }
                         const projectileSpeed = enemy.isMinion ? 3 : 4;
                         projectiles.push({ x: enemy.x + enemy.width / 2 - 2.5, y: enemy.y + enemy.height / 2 - 2.5, width: 5, height: 5, dx: projDx * projectileSpeed, dy: projDy * projectileSpeed, active: true });
-                        enemy.shootTimer = enemy.shootCooldown; // Reset to its defined cooldown
+                        enemy.shootTimer = enemy.shootCooldown;
                     } else {
                         enemy.shootTimer = 30;
                     }
@@ -599,7 +631,7 @@
             if (goalZone && goalZone.isActive && rectCollision(player, goalZone) && !isLevelTransitioning) {
                 isLevelTransitioning = true; currentLevel++;
                 let nextLvlMsg = `Advancing to Level ${currentLevel}...`;
-                if (isBossLevel && boss && !boss.isAlive) nextLvlMsg = `Boss Vanquished! ${nextLvlMsg}`; // Check if boss was defeated
+                if (isBossLevel && boss && !boss.isAlive) nextLvlMsg = `Boss Vanquished! ${nextLvlMsg}`;
                 setTimeout(() => { setupLevel(currentLevel); }, (isBossLevel && boss && !boss.isAlive) ? 1500 : 600);
                 messageDisplay.textContent = nextLvlMsg;
             }
@@ -622,8 +654,8 @@
 
             updateUI();
         }
-
-        function draw() {
+        function draw() { /* ... same as before (uses new berry font/offset) ... */
+            if (!gameRunning) return; // Don't draw if game hasn't started
             ctx.fillStyle = gameBackgroundColor; ctx.fillRect(0, 0, gameWidth, gameHeight);
             ctx.save(); ctx.translate(-camera.x, -camera.y);
 
@@ -640,13 +672,13 @@
 
                     ctx.beginPath(); ctx.arc(pUp.x + pUp.width / 2, pUp.y + pUp.height / 2, pUp.width / 2, 0, Math.PI * 2); ctx.fill();
                     ctx.fillStyle = "black";
-                    ctx.font = "14px Arial"; // CHANGED: Font size for bigger berries
+                    ctx.font = "14px Arial";
                     ctx.textAlign = "center";
                     let berryText = "?";
                     if (pUp.type === 'blockBerry') berryText = "B";
                     else if (pUp.type === 'speedBerry') berryText = "S";
                     else if (pUp.type === 'attackBerry') berryText = "A";
-                    ctx.fillText(berryText, pUp.x + pUp.width/2, pUp.y + pUp.height/2 + 5); // CHANGED: Y offset for text
+                    ctx.fillText(berryText, pUp.x + pUp.width/2, pUp.y + pUp.height/2 + 5);
                 }
             });
 
@@ -676,8 +708,8 @@
 
             ctx.restore();
         }
-
         function updateUI() { /* ... same as before ... */
+            if (!gameRunning) return; // Don't update UI if game hasn't started
             if (player.infiniteBlocksActive) { blockCountDisplay.textContent = `Blocks: INF ( ${Math.ceil(player.infiniteBlocksTimer/1000)}s )`; blockCountDisplay.classList.add('powerUpActive'); } else { blockCountDisplay.textContent = `Blocks: ${player.blocksAvailable}`; blockCountDisplay.classList.remove('powerUpActive'); }
             levelDisplay.textContent = `Level: ${currentLevel}`;
             deathCountDisplay.textContent = `Deaths: ${deathCount}`;
@@ -688,7 +720,35 @@
         function placeBlock() { /* ... same as before ... */ if (player.infiniteBlocksActive || player.blocksAvailable > 0) { placedBlocks.push({ x: player.x + (player.width / 2) - (blockWidth / 2), y: player.y + player.height, width: blockWidth, height: blockHeight }); if (!player.infiniteBlocksActive) player.blocksAvailable--; updateUI(); } else { messageDisplay.textContent = "Out of blocks!"; setTimeout(() => { if(messageDisplay.textContent === "Out of blocks!") messageDisplay.textContent = ""; }, 1500); } }
         function performDash() { /* ... same as before ... */ if (player.isDashing) return; if (player.zeroDashCooldownActive || player.dashCooldownTimer <= 0) { player.isDashing = true; player.dashTimer = dashDuration; if (keys.left) player.dashDirection = -1; else if (keys.right) player.dashDirection = 1; else player.dashDirection = (player.x + player.width/2 - camera.x < gameWidth / 2 ? 1 : -1); if (player.dashDirection === 0 && player.dx === 0) player.dashDirection = 1; else if (player.dashDirection === 0) player.dashDirection = (player.dx > 0 ? 1 : -1); if (!player.zeroDashCooldownActive) { player.dashCooldownTimer = player.dashCooldownDuration; } } else { messageDisplay.textContent = "Dash Cooldown!"; setTimeout(() => { if(messageDisplay.textContent === "Dash Cooldown!") messageDisplay.textContent = ""; }, 1000); } }
 
-        function gameLoop() { requestAnimationFrame(gameLoop); update(); draw(); }
+        // --- Game Loop & Initialization ---
+        function gameLoop() {
+            if (!gameRunning) return;
+            requestAnimationFrame(gameLoop);
+            update();
+            draw();
+        }
+
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+
+            detectMobile(); // Detect mobile for controls
+            setupMobileControls(); // Setup mobile controls if needed
+            updateFullscreenButtonText(); // Update fullscreen button text
+
+            setupLevel(currentLevel); // Setup the first level
+            gameLoop(); // Start the main game loop
+        }
+
+        // --- Event Listeners ---
+        playButton.addEventListener('click', () => {
+            titleScreen.classList.add('hidden');
+            gameContainer.classList.add('visible');
+
+            // Start game after transition (700ms for title screen fade + slight delay)
+            setTimeout(startGame, 750);
+        });
+
         window.addEventListener('keydown', function(e) { /* ... same as before ... */ if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; } if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); keys.up = true; if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; } } if (e.key === 'x' || e.key === 'X') placeBlock(); if (e.key === 'c' || e.key === 'C') performDash(); });
         window.addEventListener('keyup', function(e) { /* ... same as before ... */ if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; if (e.key === 'ArrowUp' || e.key === ' ') keys.up = false; });
         function openFullscreen(elem) { /* ... same as before ... */ if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
@@ -715,11 +775,11 @@
             mobileDashBtn.addEventListener('touchstart', (e) => handleTouchStart(e, performDash), { passive: false });
         }
 
-        detectMobile();
-        setupMobileControls();
-        setupLevel(currentLevel);
-        updateFullscreenButtonText();
-        gameLoop();
+        // Initial non-game-loop setup (can be done before play button)
+        updateFullscreenButtonText(); // Update button text early
+        detectMobile();             // Detect device type
+        setupMobileControls();      // Setup controls if mobile (they'll be hidden with gameContainer)
+
     </script>
 </body>
 </html>
