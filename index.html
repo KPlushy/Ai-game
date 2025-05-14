@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -31,41 +31,38 @@
         #mobileControls {
             display: none; /* Hidden by default, shown via JS */
             position: absolute;
-            bottom: 0;      /* Aligns to the bottom of gameContainer (respecting its padding) */
+            bottom: 0;
             left: 0;
             width: 100%;
-            height: 130px;  /* Area for controls, adjust as needed */
-            z-index: 10;    /* Above canvas */
-            pointer-events: none; /* Allow clicks to pass through the container itself if no button is hit */
+            height: 130px;
+            z-index: 10;
+            pointer-events: none;
         }
         .mobile-btn {
-            background-color: rgba(106, 13, 173, 0.6); /* Semi-transparent purple */
+            background-color: rgba(106, 13, 173, 0.6);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%; /* Circular buttons */
+            border-radius: 50%;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
-            user-select: none; /* Prevent text selection */
+            user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
-            touch-action: manipulation; /* Improve touch responsiveness & prevent double-tap zoom */
-            position: absolute; /* Position buttons individually within #mobileControls */
-            pointer-events: auto; /* Buttons should be interactive */
+            touch-action: manipulation;
+            position: absolute;
+            pointer-events: auto;
             box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
         }
         .mobile-btn:active {
-            background-color: rgba(138, 43, 226, 0.8); /* Lighter purple on press */
+            background-color: rgba(138, 43, 226, 0.8);
         }
 
-        /* Positioning individual mobile buttons */
-        /* Adjust px values as needed for your gameWidth/gameHeight and aesthetics */
         #mobileLeftBtn  { left: 15px; bottom: 15px; width: 65px; height: 65px; font-size: 22px; }
         #mobileRightBtn { left: 90px; bottom: 15px; width: 65px; height: 65px; font-size: 22px; }
-
         #mobileJumpBtn  { right: 15px; bottom: 75px; width: 75px; height: 75px; font-size: 26px; }
         #mobileBlockBtn { right: 100px; bottom: 10px; width: 60px; height: 60px; font-size: 20px; }
         #mobileDashBtn  { right: 25px;  bottom: 10px; width: 60px; height: 60px; font-size: 20px; }
@@ -87,7 +84,6 @@
             <p id="powerUpDisplay"></p>
         </div>
 
-        <!-- MOBILE CONTROLS (Added Here) -->
         <div id="mobileControls">
             <button id="mobileLeftBtn" class="mobile-btn">◀</button>
             <button id="mobileRightBtn" class="mobile-btn">▶</button>
@@ -113,7 +109,6 @@
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const gameContainer = document.getElementById('gameContainer');
 
-        // Mobile Controls Elements
         const mobileControlsContainer = document.getElementById('mobileControls');
         const mobileLeftBtn = document.getElementById('mobileLeftBtn');
         const mobileRightBtn = document.getElementById('mobileRightBtn');
@@ -173,13 +168,35 @@
             let config = { name: `Procedural Lvl ${levelNumber}`, messageOnLoad: `Level ${levelNumber}: Survive!`, levelActualWidth: levelActualWidth, groundSegments: [], startZone: { x: 30 + Math.random()*20, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: levelActualWidth - 90 - Math.random()*30, y: gameHeight - 70, width: 60, height: 30 }, spikes: [], enemies: [], powerUps: [] };
             let currentX = 0; let lastPlatformY = gameHeight - 40; const minPlatformWidth = 70; const maxPlatformWidth = gameWidth * 0.6; const maxMainGapWidth = playerBaseWidth * 2 + blockWidth; const maxYVariation = 150; let platformCount = 0;
             while (currentX < config.levelActualWidth) { let platformWidth = minPlatformWidth + Math.random() * (maxPlatformWidth - minPlatformWidth); platformWidth = Math.min(platformWidth, config.levelActualWidth - currentX); let platformY = lastPlatformY; if (platformCount > 0 && Math.random() < 0.7) { platformY = (gameHeight - 60 - maxYVariation/2) + (Math.random() * maxYVariation); platformY = Math.max(gameHeight - 250, Math.min(gameHeight - 30, platformY)); } let currentPlatform = { x: currentX, y: platformY, width: platformWidth, height: gameHeight - platformY, isSkyIsland: false }; config.groundSegments.push(currentPlatform); currentX += platformWidth; lastPlatformY = platformY; platformCount++; if (Math.random() < 0.25 + effectiveLevelNum * 0.02) { let islandX = currentPlatform.x + (Math.random() * (currentPlatform.width - 60)); islandX = Math.max(currentPlatform.x + 10, islandX); let islandY = currentPlatform.y - 60 - (Math.random() * 120); islandY = Math.max(60, islandY); let islandW = 50 + Math.random() * 80; let islandH = 20 + Math.random() * 10; if (islandX + islandW < config.levelActualWidth) { config.groundSegments.push({ x: islandX, y: islandY, width: islandW, height: islandH, isSkyIsland: true});} } if (currentX < config.levelActualWidth - maxPlatformWidth) { let gapWidth = (playerBaseWidth + 10) + Math.random() * (maxMainGapWidth - (playerBaseWidth + 10)); currentX += gapWidth; } }
-            if (config.groundSegments.length > 0) { const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland) || config.groundSegments[0]; config.startZone.y = firstPlatform.y - config.startZone.height -1; config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x); config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x); let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.7); let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < gameHeight - 100); if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[Math.floor(Math.random()*potentialGoalPlatforms.length)]; if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1]; config.goalZone.y = goalPlatform.y - config.goalZone.height -1; config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ; config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x); config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x); } else { config.groundSegments.push({x: 0, y: gameHeight - 40, width: config.levelActualWidth, height: 40}); config.startZone.y = gameHeight - 70; config.goalZone.y = gameHeight - 70; }
+
+            if (config.groundSegments.length > 0) {
+                const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland) || config.groundSegments[0];
+                config.startZone.y = firstPlatform.y - config.startZone.height -1;
+                config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x);
+                config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x);
+
+                let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.7);
+                let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < gameHeight - 100);
+                if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[Math.floor(Math.random()*potentialGoalPlatforms.length)];
+                if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1];
+
+                config.goalZone.y = goalPlatform.y - config.goalZone.height -1;
+                config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ;
+                config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x);
+                config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x);
+            } else {
+                config.groundSegments.push({x: 0, y: gameHeight - 40, width: config.levelActualWidth, height: 40});
+                config.startZone.y = gameHeight - 70;
+                config.goalZone.y = gameHeight - 70;
+            }
+
             const numSpikesToGenerate = levelNumber; let spikeW = Math.max(5, 25 - Math.floor(levelNumber / 4)); const spikeH = 20;
             for (let i = 0; i < numSpikesToGenerate; i++) { let sX, sY; if (config.groundSegments.length > 0 && Math.random() < 0.8) { let platform = config.groundSegments[Math.floor(Math.random() * config.groundSegments.length)]; sX = platform.x + (Math.random() * platform.width); if (Math.random() < 0.7 || platform.isSkyIsland) { sY = platform.y - spikeH; } else { sY = platform.y - spikeH - 10 - (Math.random() * 80); } } else { sX = Math.random() * config.levelActualWidth; sY = 60 + Math.random() * (gameHeight - 120); } sX = Math.max(0, Math.min(sX, config.levelActualWidth - spikeW)); sY = Math.max(20, sY); config.spikes.push({ x: sX, y: sY, width: spikeW, height: spikeH }); }
             const numEnemies = Math.min(10, Math.floor(effectiveLevelNum / 3));
             for (let i = 0; i < numEnemies; i++) { let groundPlatforms = config.groundSegments.filter(p => !p.isSkyIsland || p.width > 60); if (groundPlatforms.length > 0) { let platform = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)]; let eX = platform.x + 20 + Math.random() * (platform.width - 40); let eY = platform.y - 20; config.enemies.push({ x: eX, y: eY, type: 'shooter', width: 20, height: 20, shootCooldown: 180 - Math.min(120, effectiveLevelNum * 3), shootTimer: Math.random() * 60 }); } }
             if (Math.random() < 0.4 + Math.min(0.2, effectiveLevelNum * 0.01)) { let powerUpType = Math.random() < 0.5 ? 'blockBerry' : 'speedBerry'; let pX, pY; let attempts = 0; let placed = false; while (!placed && attempts < 20) { let skyIslands = config.groundSegments.filter(p => p.isSkyIsland && p.y < gameHeight - 150); if (skyIslands.length > 0 && Math.random() < 0.7) { let island = skyIslands[Math.floor(Math.random() * skyIslands.length)]; pX = island.x + (island.width / 2) - (powerUpSize / 2); pY = island.y - powerUpSize - 5; placed = true; } else { pX = config.startZone.x + config.startZone.width + 50 + Math.random() * (config.levelActualWidth - 150 - config.startZone.x - config.startZone.width); pY = 60 + Math.random() * (gameHeight - 250); placed = true; } let tempPowerUpRect = {x: pX, y: pY, width: powerUpSize, height: powerUpSize}; if(rectCollision(tempPowerUpRect, config.startZone) || rectCollision(tempPowerUpRect, config.goalZone) || config.spikes.some(s => rectCollision(tempPowerUpRect, s))) { placed = false; } attempts++; } if(placed){ config.powerUps.push({ x: pX, y: pY, type: powerUpType, collected: false, width: powerUpSize, height: powerUpSize }); } }
             if (levelNumber > 60) config.messageOnLoad = `Lvl ${levelNumber}: Unforgiving!`; else if (levelNumber > 35) config.messageOnLoad = `Lvl ${levelNumber}: Hostile Territory!`;
+
             config.spikes = config.spikes.filter(s => !(rectCollision(s, config.startZone) || rectCollision(s, config.goalZone)));
             config.enemies = config.enemies.filter(e => !rectCollision(e, config.startZone) && !rectCollision(e, config.goalZone));
             return config;
@@ -271,68 +288,52 @@
             let puText = ""; if(player.infiniteBlocksActive && player.zeroDashCooldownActive) puText = "ALL POWER!"; else if(player.infiniteBlocksActive) puText = "Infinite Blocks!"; else if(player.zeroDashCooldownActive) puText = "Speed Dash!"; powerUpDisplay.textContent = puText; if(puText) powerUpDisplay.classList.add('powerUpActive'); else powerUpDisplay.classList.remove('powerUpActive');
         }
         function placeBlock() { if (player.infiniteBlocksActive || player.blocksAvailable > 0) { placedBlocks.push({ x: player.x + (player.width / 2) - (blockWidth / 2), y: player.y + player.height, width: blockWidth, height: blockHeight }); if (!player.infiniteBlocksActive) player.blocksAvailable--; updateUI(); } else { messageDisplay.textContent = "Out of blocks!"; setTimeout(() => { if(messageDisplay.textContent === "Out of blocks!") messageDisplay.textContent = ""; }, 1500); } }
-        function performDash() { if (player.isDashing) return; if (player.zeroDashCooldownActive || player.dashCooldownTimer <= 0) { player.isDashing = true; player.dashTimer = dashDuration; if (keys.left) player.dashDirection = -1; else if (keys.right) player.dashDirection = 1; else player.dashDirection = (player.x + player.width/2 - camera.x < gameWidth / 2 ? 1 : -1); if (player.dashDirection === 0 && player.dx === 0) player.dashDirection = 1; /* Default to right if idle and centered */ else if (player.dashDirection === 0) player.dashDirection = (player.dx > 0 ? 1 : -1); /* Dash in current move direction if not L/R key */ if (!player.zeroDashCooldownActive) { player.dashCooldownTimer = player.dashCooldownDuration; } } else { messageDisplay.textContent = "Dash Cooldown!"; setTimeout(() => { if(messageDisplay.textContent === "Dash Cooldown!") messageDisplay.textContent = ""; }, 1000); } }
+        function performDash() { if (player.isDashing) return; if (player.zeroDashCooldownActive || player.dashCooldownTimer <= 0) { player.isDashing = true; player.dashTimer = dashDuration; if (keys.left) player.dashDirection = -1; else if (keys.right) player.dashDirection = 1; else player.dashDirection = (player.x + player.width/2 - camera.x < gameWidth / 2 ? 1 : -1); if (player.dashDirection === 0 && player.dx === 0) player.dashDirection = 1; else if (player.dashDirection === 0) player.dashDirection = (player.dx > 0 ? 1 : -1); if (!player.zeroDashCooldownActive) { player.dashCooldownTimer = player.dashCooldownDuration; } } else { messageDisplay.textContent = "Dash Cooldown!"; setTimeout(() => { if(messageDisplay.textContent === "Dash Cooldown!") messageDisplay.textContent = ""; }, 1000); } }
 
         function gameLoop() { requestAnimationFrame(gameLoop); update(); draw(); }
 
-        // Keyboard Event Listeners
         window.addEventListener('keydown', function(e) { if (document.activeElement === fullscreenBtn && e.key === 'Enter') { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); return; } if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); keys.up = true; if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; } } if (e.key === 'x' || e.key === 'X') placeBlock(); if (e.key === 'c' || e.key === 'C') performDash(); });
         window.addEventListener('keyup', function(e) { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; if (e.key === 'ArrowUp' || e.key === ' ') keys.up = false; });
 
-        // Fullscreen Logic
         function openFullscreen(elem) { if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
         function closeFullscreen() { if (document.exitFullscreen) document.exitFullscreen(); else if (document.mozCancelFullScreen) document.mozCancelFullScreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); else if (document.msExitFullscreen) document.msExitFullscreen(); }
         fullscreenBtn.addEventListener('click', function() { if (!document.fullscreenElement) openFullscreen(gameContainer); else closeFullscreen(); });
         function updateFullscreenButtonText() { fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen"; }
         document.addEventListener('fullscreenchange', updateFullscreenButtonText); document.addEventListener('mozfullscreenchange', updateFullscreenButtonText); document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText); document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
 
-        // Mobile Controls Setup
         function detectMobile() {
             isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-            // For testing on desktop browsers with touch simulation:
-            // isMobile = true;
             return isMobile;
         }
 
         function setupMobileControls() {
             if (!isMobile) return;
+            mobileControlsContainer.style.display = 'block';
+            const handleTouchStart = (e, action) => { e.preventDefault(); action(); };
+            const handleTouchEnd = (e, action) => { e.preventDefault(); action(); };
 
-            mobileControlsContainer.style.display = 'block'; // Show the controls container
+            mobileLeftBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => keys.left = true), { passive: false });
+            mobileLeftBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.left = false), { passive: false });
+            mobileLeftBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.left = false), { passive: false });
 
-            // Left Button
-            mobileLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; }, { passive: false });
-            mobileLeftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; }, { passive: false });
-            mobileLeftBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); keys.left = false; }, { passive: false });
+            mobileRightBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => keys.right = true), { passive: false });
+            mobileRightBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.right = false), { passive: false });
+            mobileRightBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.right = false), { passive: false });
 
-            // Right Button
-            mobileRightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; }, { passive: false });
-            mobileRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; }, { passive: false });
-            mobileRightBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); keys.right = false; }, { passive: false });
-
-            // Jump Button
-            mobileJumpBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
+            mobileJumpBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => {
                 keys.up = true;
                 if (player.onGround && !player.isDashing) {
                     player.dy = jumpStrength;
                     player.onGround = false;
                 }
-            }, { passive: false });
-            mobileJumpBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys.up = false;
-            }, { passive: false });
-             mobileJumpBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); keys.up = false; }, { passive: false });
+            }), { passive: false });
+            mobileJumpBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.up = false), { passive: false });
+            mobileJumpBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.up = false), { passive: false });
 
-
-            // Place Block Button
-            mobileBlockBtn.addEventListener('touchstart', (e) => { e.preventDefault(); placeBlock(); }, { passive: false });
-
-            // Dash Button
-            mobileDashBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performDash(); }, { passive: false });
+            mobileBlockBtn.addEventListener('touchstart', (e) => handleTouchStart(e, placeBlock), { passive: false });
+            mobileDashBtn.addEventListener('touchstart', (e) => handleTouchStart(e, performDash), { passive: false });
         }
 
-        // Initial Setup Calls
         detectMobile();
         setupMobileControls();
         setupLevel(currentLevel);
