@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HTML Parkour - PowerUps, Cooldowns & Credits</title>
+    <title>HTML Parkour - Boss Fights!</title>
     <style>
         body { margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background-color: #301934; font-family: Arial, sans-serif; color: white; }
         #gameContainer {
@@ -15,7 +15,7 @@
             box-sizing: border-box;
             border-radius: 8px;
             margin-bottom: 10px;
-            position: relative; /* Crucial for absolute positioning of mobile controls */
+            position: relative;
         }
         #fullscreenBtn { margin-bottom: 10px; padding: 8px 15px; background-color: #6A0DAD; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; width: 90%; max-width: 340px; }
         #fullscreenBtn:hover { background-color: #8A2BE2; }
@@ -23,55 +23,67 @@
         #controlsInfo { margin-top: 10px; padding: 10px; background-color: rgba(74, 0, 114, 0.8); border-radius: 5px; text-align: center; width: 90%; max-width: 340px; }
         #controlsInfo p { margin: 5px 0; }
         #messageDisplay, #powerUpDisplay, #deathCountDisplay { min-height: 1.2em; font-weight: bold; }
-        .powerUpActive { color: #FFD700; /* Gold for active power-up text */ }
+        .powerUpActive { color: #FFD700; }
         #credits { text-align: center; margin-top: 5px; font-size: 0.9em; color: #ccc; }
         #credits p { margin: 2px 0; }
 
-        /* Mobile Controls Styles */
         #mobileControls {
-            display: none; /* Hidden by default, shown via JS */
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 130px;
-            z-index: 10;
-            pointer-events: none;
+            display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 130px; z-index: 10; pointer-events: none;
         }
         .mobile-btn {
-            background-color: rgba(106, 13, 173, 0.6);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            touch-action: manipulation;
-            position: absolute;
-            pointer-events: auto;
-            box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
+            background-color: rgba(106, 13, 173, 0.6); color: white; border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center;
+            user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+            touch-action: manipulation; position: absolute; pointer-events: auto; box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
         }
-        .mobile-btn:active {
-            background-color: rgba(138, 43, 226, 0.8);
-        }
-
+        .mobile-btn:active { background-color: rgba(138, 43, 226, 0.8); }
         #mobileLeftBtn  { left: 15px; bottom: 15px; width: 65px; height: 65px; font-size: 22px; }
         #mobileRightBtn { left: 90px; bottom: 15px; width: 65px; height: 65px; font-size: 22px; }
         #mobileJumpBtn  { right: 15px; bottom: 75px; width: 75px; height: 75px; font-size: 26px; }
         #mobileBlockBtn { right: 100px; bottom: 10px; width: 60px; height: 60px; font-size: 20px; }
         #mobileDashBtn  { right: 25px;  bottom: 10px; width: 60px; height: 60px; font-size: 20px; }
 
+        /* Boss HP Bar Styles */
+        #bossHpContainer {
+            position: absolute;
+            top: 5px; /* Position at the top of the canvas */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 300px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid #fff;
+            border-radius: 5px;
+            display: none; /* Hidden by default */
+            z-index: 5; /* Below mobile controls but above canvas content if needed */
+        }
+        #bossHpFill {
+            height: 100%;
+            background-color: #FF0000; /* Red for HP */
+            border-radius: 4px;
+            transition: width 0.2s ease-out;
+        }
+        #bossHpText {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 0.8em;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px black;
+        }
+
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <button id="fullscreenBtn">Go Fullscreen</button>
+        <div id="bossHpContainer"> <!-- Boss HP Bar -->
+            <div id="bossHpFill"></div>
+            <div id="bossHpText">BOSS HP</div>
+        </div>
         <canvas id="gameCanvas"></canvas>
         <div id="controlsInfo">
             <p><strong>Controls:</strong></p>
@@ -83,7 +95,6 @@
             <p id="messageDisplay"></p>
             <p id="powerUpDisplay"></p>
         </div>
-
         <div id="mobileControls">
             <button id="mobileLeftBtn" class="mobile-btn">◀</button>
             <button id="mobileRightBtn" class="mobile-btn">▶</button>
@@ -117,6 +128,11 @@
         const mobileDashBtn = document.getElementById('mobileDashBtn');
         let isMobile = false;
 
+        // Boss UI Elements
+        const bossHpContainer = document.getElementById('bossHpContainer');
+        const bossHpFill = document.getElementById('bossHpFill');
+        const bossHpText = document.getElementById('bossHpText');
+
 
         let gameWidth = 360; let gameHeight = 500;
         canvas.width = gameWidth; canvas.height = gameHeight;
@@ -133,6 +149,20 @@
         const enemyColor = '#FF4500'; const projectileColor = '#FF8C00';
         const blockBerryColor = '#00FF00'; const speedBerryColor = '#00FFFF';
         const gameBackgroundColor = '#E6E6FA';
+
+        // --- BOSS CONSTANTS ---
+        const BOSS_MAX_HP = 100;
+        const BOSS_ATTACK_BERRY_DAMAGE = 25;
+        const BOSS_MINION_SPAWN_INTERVAL = 3000; // 3 seconds
+        const BOSS_MINIONS_PER_SPAWN = 2;
+        const BOSS_MINION_THRESHOLD_FOR_LASER = 10; // Total minions to spawn before laser phase (reduced for testing)
+        const BOSS_LASER_SHOOT_INTERVAL = 1500; // 1.5 seconds
+        const BOSS_PROJECTILE_SPEED = 4;
+        const NUM_ATTACK_BERRIES = 4;
+
+        const bossAlienColor = '#00CED1'; // DarkTurquoise for Alien Boss
+        const attackBerryColor = '#FFA500'; // Orange for Attack Berry
+        const bossLaserColor = '#FF0000'; // Red for Boss Laser
 
         let player = {
             x: 50, y: gameHeight - 80, width: playerBaseWidth, height: playerBaseHeight,
@@ -152,7 +182,12 @@
         let enemies = []; let projectiles = [];
         let powerUpsInLevel = [];
 
-        const definedLevels = [
+        // --- BOSS STATE ---
+        let isBossLevel = false;
+        let boss = null;
+        let bossProjectiles = [];
+
+        const definedLevels = [ /* ... first 5 levels ... */
             { name: "Horizontal Scroll!", messageOnLoad: "Welcome!", levelActualWidth: gameWidth * 1.5, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 1.5, height: 40 } ], startZone: { x: 30, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 1.5 - 90, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.75 - 15, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [], powerUps: [{x: gameWidth * 0.5, y: gameHeight - 150, type: 'blockBerry'}] },
             { name: "Gaps and Platforms", messageOnLoad: "Watch your step!", levelActualWidth: gameWidth * 2, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 0.5, y: gameHeight - 60, width: gameWidth * 0.3, height: 60 }, { x: gameWidth * 0.9, y: gameHeight - 40, width: gameWidth * 0.4, height: 40 }, { x: gameWidth * 1.5, y: gameHeight - 50, width: gameWidth * 0.5, height: 50 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 2 - 100, y: gameHeight - 80, width: 60, height: 30 }, spikes: [ { x: gameWidth * 0.4 + 10, y: gameHeight - 20, width: gameWidth*0.1-20, height: 20}, { x: gameWidth * 0.6, y: gameHeight - 80, width: 30, height: 20 }, { x: gameWidth * 1.2, y: gameHeight - 20, width: gameWidth*0.3-20, height:20 } ], enemies: [{x: gameWidth * 0.55, y: gameHeight - 80 - 20, type: 'shooter'}], powerUps: [{x: gameWidth * 1.6, y: gameHeight - 180, type: 'speedBerry'}] },
             { name: "Block Challenge", messageOnLoad: "Use blocks!", levelActualWidth: gameWidth * 2.5, groundSegments: [ { x: 0, y: gameHeight - 40, width: gameWidth * 0.6, height: 40 }, { x: gameWidth * 1.2, y: gameHeight - 40, width: gameWidth * 1.3, height: 40 } ], startZone: { x: 50, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: gameWidth * 2.5 - 100, y: gameHeight - 70, width: 60, height: 30 }, spikes: [ { x: gameWidth * 1.5, y: gameHeight - 60, width: 30, height: 20 } ], enemies: [{x: gameWidth * 1.3, y: gameHeight - 60 - 20, type: 'shooter'}], powerUps: [] },
@@ -161,68 +196,134 @@
         ];
         const numDefinedLevels = definedLevels.length;
 
-        function generateProceduralLevel(levelNumber) {
+        function generateProceduralLevel(levelNumber) { /* ... same as before ... */
             const effectiveLevelNum = levelNumber - numDefinedLevels;
             const currentLevelActualWidth = gameWidth * (2.5 + Math.floor(effectiveLevelNum / 3));
             levelActualWidth = Math.min(currentLevelActualWidth, gameWidth * 10);
             let config = { name: `Procedural Lvl ${levelNumber}`, messageOnLoad: `Level ${levelNumber}: Survive!`, levelActualWidth: levelActualWidth, groundSegments: [], startZone: { x: 30 + Math.random()*20, y: gameHeight - 70, width: 60, height: 30 }, goalZone: { x: levelActualWidth - 90 - Math.random()*30, y: gameHeight - 70, width: 60, height: 30 }, spikes: [], enemies: [], powerUps: [] };
             let currentX = 0; let lastPlatformY = gameHeight - 40; const minPlatformWidth = 70; const maxPlatformWidth = gameWidth * 0.6; const maxMainGapWidth = playerBaseWidth * 2 + blockWidth; const maxYVariation = 150; let platformCount = 0;
             while (currentX < config.levelActualWidth) { let platformWidth = minPlatformWidth + Math.random() * (maxPlatformWidth - minPlatformWidth); platformWidth = Math.min(platformWidth, config.levelActualWidth - currentX); let platformY = lastPlatformY; if (platformCount > 0 && Math.random() < 0.7) { platformY = (gameHeight - 60 - maxYVariation/2) + (Math.random() * maxYVariation); platformY = Math.max(gameHeight - 250, Math.min(gameHeight - 30, platformY)); } let currentPlatform = { x: currentX, y: platformY, width: platformWidth, height: gameHeight - platformY, isSkyIsland: false }; config.groundSegments.push(currentPlatform); currentX += platformWidth; lastPlatformY = platformY; platformCount++; if (Math.random() < 0.25 + effectiveLevelNum * 0.02) { let islandX = currentPlatform.x + (Math.random() * (currentPlatform.width - 60)); islandX = Math.max(currentPlatform.x + 10, islandX); let islandY = currentPlatform.y - 60 - (Math.random() * 120); islandY = Math.max(60, islandY); let islandW = 50 + Math.random() * 80; let islandH = 20 + Math.random() * 10; if (islandX + islandW < config.levelActualWidth) { config.groundSegments.push({ x: islandX, y: islandY, width: islandW, height: islandH, isSkyIsland: true});} } if (currentX < config.levelActualWidth - maxPlatformWidth) { let gapWidth = (playerBaseWidth + 10) + Math.random() * (maxMainGapWidth - (playerBaseWidth + 10)); currentX += gapWidth; } }
-
-            if (config.groundSegments.length > 0) {
-                const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland) || config.groundSegments[0];
-                config.startZone.y = firstPlatform.y - config.startZone.height -1;
-                config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x);
-                config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x);
-
-                let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.7);
-                let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < gameHeight - 100);
-                if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[Math.floor(Math.random()*potentialGoalPlatforms.length)];
-                if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1];
-
-                config.goalZone.y = goalPlatform.y - config.goalZone.height -1;
-                config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ;
-                config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x);
-                config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x);
-            } else {
-                config.groundSegments.push({x: 0, y: gameHeight - 40, width: config.levelActualWidth, height: 40});
-                config.startZone.y = gameHeight - 70;
-                config.goalZone.y = gameHeight - 70;
-            }
-
+            if (config.groundSegments.length > 0) { const firstPlatform = config.groundSegments.find(p => !p.isSkyIsland) || config.groundSegments[0]; config.startZone.y = firstPlatform.y - config.startZone.height -1; config.startZone.x = Math.max(firstPlatform.x + 5, config.startZone.x); config.startZone.x = Math.min(firstPlatform.x + firstPlatform.width - config.startZone.width - 5, config.startZone.x); let potentialGoalPlatforms = config.groundSegments.filter(p => p.x > config.levelActualWidth * 0.7); let goalPlatform = potentialGoalPlatforms.find(p => p.isSkyIsland && p.y < gameHeight - 100); if (!goalPlatform && potentialGoalPlatforms.length > 0) goalPlatform = potentialGoalPlatforms[Math.floor(Math.random()*potentialGoalPlatforms.length)]; if (!goalPlatform) goalPlatform = config.groundSegments[config.groundSegments.length-1]; config.goalZone.y = goalPlatform.y - config.goalZone.height -1; config.goalZone.x = goalPlatform.x + (goalPlatform.width / 2) - (config.goalZone.width / 2) ; config.goalZone.x = Math.max(goalPlatform.x + 5, config.goalZone.x); config.goalZone.x = Math.min(goalPlatform.x + goalPlatform.width - config.goalZone.width - 5, config.goalZone.x); } else { config.groundSegments.push({x: 0, y: gameHeight - 40, width: config.levelActualWidth, height: 40}); config.startZone.y = gameHeight - 70; config.goalZone.y = gameHeight - 70; }
             const numSpikesToGenerate = levelNumber; let spikeW = Math.max(5, 25 - Math.floor(levelNumber / 4)); const spikeH = 20;
             for (let i = 0; i < numSpikesToGenerate; i++) { let sX, sY; if (config.groundSegments.length > 0 && Math.random() < 0.8) { let platform = config.groundSegments[Math.floor(Math.random() * config.groundSegments.length)]; sX = platform.x + (Math.random() * platform.width); if (Math.random() < 0.7 || platform.isSkyIsland) { sY = platform.y - spikeH; } else { sY = platform.y - spikeH - 10 - (Math.random() * 80); } } else { sX = Math.random() * config.levelActualWidth; sY = 60 + Math.random() * (gameHeight - 120); } sX = Math.max(0, Math.min(sX, config.levelActualWidth - spikeW)); sY = Math.max(20, sY); config.spikes.push({ x: sX, y: sY, width: spikeW, height: spikeH }); }
             const numEnemies = Math.min(10, Math.floor(effectiveLevelNum / 3));
             for (let i = 0; i < numEnemies; i++) { let groundPlatforms = config.groundSegments.filter(p => !p.isSkyIsland || p.width > 60); if (groundPlatforms.length > 0) { let platform = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)]; let eX = platform.x + 20 + Math.random() * (platform.width - 40); let eY = platform.y - 20; config.enemies.push({ x: eX, y: eY, type: 'shooter', width: 20, height: 20, shootCooldown: 180 - Math.min(120, effectiveLevelNum * 3), shootTimer: Math.random() * 60 }); } }
             if (Math.random() < 0.4 + Math.min(0.2, effectiveLevelNum * 0.01)) { let powerUpType = Math.random() < 0.5 ? 'blockBerry' : 'speedBerry'; let pX, pY; let attempts = 0; let placed = false; while (!placed && attempts < 20) { let skyIslands = config.groundSegments.filter(p => p.isSkyIsland && p.y < gameHeight - 150); if (skyIslands.length > 0 && Math.random() < 0.7) { let island = skyIslands[Math.floor(Math.random() * skyIslands.length)]; pX = island.x + (island.width / 2) - (powerUpSize / 2); pY = island.y - powerUpSize - 5; placed = true; } else { pX = config.startZone.x + config.startZone.width + 50 + Math.random() * (config.levelActualWidth - 150 - config.startZone.x - config.startZone.width); pY = 60 + Math.random() * (gameHeight - 250); placed = true; } let tempPowerUpRect = {x: pX, y: pY, width: powerUpSize, height: powerUpSize}; if(rectCollision(tempPowerUpRect, config.startZone) || rectCollision(tempPowerUpRect, config.goalZone) || config.spikes.some(s => rectCollision(tempPowerUpRect, s))) { placed = false; } attempts++; } if(placed){ config.powerUps.push({ x: pX, y: pY, type: powerUpType, collected: false, width: powerUpSize, height: powerUpSize }); } }
             if (levelNumber > 60) config.messageOnLoad = `Lvl ${levelNumber}: Unforgiving!`; else if (levelNumber > 35) config.messageOnLoad = `Lvl ${levelNumber}: Hostile Territory!`;
-
             config.spikes = config.spikes.filter(s => !(rectCollision(s, config.startZone) || rectCollision(s, config.goalZone)));
             config.enemies = config.enemies.filter(e => !rectCollision(e, config.startZone) && !rectCollision(e, config.goalZone));
             return config;
         }
 
+        // --- BOSS LEVEL SETUP ---
+        function spawnAttackBerry(specificX, specificY) {
+            let berryX, berryY;
+            if (specificX !== undefined && specificY !== undefined) {
+                berryX = specificX;
+                berryY = specificY;
+            } else {
+                // Spawn randomly on the ground plane, avoiding overlap somewhat crudely
+                let attempts = 0;
+                let validPosition = false;
+                while(!validPosition && attempts < 20) {
+                    berryX = Math.random() * (levelActualWidth - powerUpSize - 40) + 20; // Keep away from edges
+                    berryY = gameHeight - 40 - powerUpSize - 5; // On the ground
+                    let tempBerry = {x: berryX, y: berryY, width: powerUpSize, height: powerUpSize};
+                    validPosition = !powerUpsInLevel.some(p => p.type === 'attackBerry' && rectCollision(tempBerry, p));
+                    if (rectCollision(tempBerry, player)) validPosition = false;
+                    attempts++;
+                }
+                 if (!validPosition) { // Fallback if random placement fails
+                    berryX = (levelActualWidth / (NUM_ATTACK_BERRIES + 1)) * (powerUpsInLevel.filter(p=>p.type==='attackBerry').length + 1);
+                    berryY = gameHeight - 40 - powerUpSize - 5;
+                }
+            }
+            powerUpsInLevel.push({
+                x: berryX, y: berryY, type: 'attackBerry',
+                collected: false, width: powerUpSize, height: powerUpSize
+            });
+        }
+
+        function setupBossLevel(levelNumber) {
+            isBossLevel = true;
+            levelActualWidth = gameWidth * 1.5; // Boss arena width
+            camera.x = (levelActualWidth - gameWidth) / 2; // Center camera for boss fight
+
+            groundSegments = [{ x: 0, y: gameHeight - 40, width: levelActualWidth, height: 40 }];
+            startZone = { x: 30, y: gameHeight - 70, width: 60, height: 30 };
+            goalZone = { x: levelActualWidth - 90, y: gameHeight - 70, width: 60, height: 30, isActive: false }; // Goal inactive initially
+            spikes = [];
+            enemies = []; // Minions will be spawned by boss
+            projectiles = [];
+            bossProjectiles = [];
+            powerUpsInLevel = []; // Clear other powerups
+
+            messageDisplay.textContent = `Level ${levelNumber}: BOSS FIGHT!`;
+
+            boss = {
+                x: levelActualWidth / 2 - 25, y: 50, width: 50, height: 50,
+                dx: 1.5, hp: BOSS_MAX_HP, maxHp: BOSS_MAX_HP, isAlive: true,
+                phase: 'minion', // 'minion' or 'laser'
+                minionSpawnTimer: BOSS_MINION_SPAWN_INTERVAL,
+                minionsSpawnedThisPhase: 0,
+                laserShootTimer: BOSS_LASER_SHOOT_INTERVAL,
+            };
+
+            // Spawn initial attack berries
+            for (let i = 0; i < NUM_ATTACK_BERRIES; i++) {
+                // Distribute them somewhat evenly for the first spawn
+                spawnAttackBerry((levelActualWidth / (NUM_ATTACK_BERRIES + 1)) * (i + 1), undefined);
+            }
+            bossHpContainer.style.display = 'block';
+            updateBossUI();
+        }
+
+
         function setupLevel(levelNumber) {
             isLevelTransitioning = false;
+            isBossLevel = false; // Reset boss level flag
+            boss = null;
+            bossProjectiles = [];
+            bossHpContainer.style.display = 'none'; // Hide boss HP bar
+
             player.dx = 0; player.dy = 0; player.onGround = false;
             player.blocksAvailable = maxBlocks; placedBlocks = [];
-            enemies = []; projectiles = []; powerUpsInLevel = [];
+            enemies = []; projectiles = []; powerUpsInLevel = []; // Clear these first
             player.infiniteBlocksActive = false; player.infiniteBlocksTimer = 0;
             player.zeroDashCooldownActive = false; player.zeroDashCooldownTimer = 0;
             player.dashCooldownDuration = baseDashCooldownDuration;
 
-            let levelConfig;
-            if (levelNumber <= numDefinedLevels) { const definedConfig = definedLevels[levelNumber - 1]; levelConfig = JSON.parse(JSON.stringify(definedConfig)); messageDisplay.textContent = levelConfig.messageOnLoad || `Level ${levelNumber}: ${levelConfig.name || ''}`; } else { levelConfig = generateProceduralLevel(levelNumber); if (!messageDisplay.textContent && levelConfig.messageOnLoad) messageDisplay.textContent = levelConfig.messageOnLoad; else if (!messageDisplay.textContent) messageDisplay.textContent = `Level ${levelNumber}: ${levelConfig.name || (levelNumber + " Spikes!")}`; }
-            levelActualWidth = levelConfig.levelActualWidth || gameWidth;
-            groundSegments = levelConfig.groundSegments ? JSON.parse(JSON.stringify(levelConfig.groundSegments)) : [{x:0, y:gameHeight-40, width:levelActualWidth, height:40}];
-            startZone = { ...(levelConfig.startZone || { x: 30, y: gameHeight - 70, width: 60, height: 30 }) };
-            goalZone = { ...(levelConfig.goalZone || { x: levelActualWidth - 90, y: gameHeight - 70, width: 60, height: 30 }) };
-            spikes = levelConfig.spikes ? JSON.parse(JSON.stringify(levelConfig.spikes)) : [];
-            if (levelConfig.enemies) enemies = levelConfig.enemies.map(e => ({...e, shootTimer: e.shootTimer || Math.random() * e.shootCooldown }));
-            if (levelConfig.powerUps) powerUpsInLevel = levelConfig.powerUps.map(p => ({...p, collected: false, width: powerUpSize, height: powerUpSize}));
+            if (levelNumber > 0 && levelNumber % 25 === 0) { // Check for boss level (e.g., 25, 50, 75...)
+                setupBossLevel(levelNumber);
+            } else {
+                // Regular level setup
+                let levelConfig;
+                if (levelNumber <= numDefinedLevels) {
+                    const definedConfig = definedLevels[levelNumber - 1];
+                    levelConfig = JSON.parse(JSON.stringify(definedConfig));
+                    messageDisplay.textContent = levelConfig.messageOnLoad || `Level ${levelNumber}: ${levelConfig.name || ''}`;
+                } else {
+                    levelConfig = generateProceduralLevel(levelNumber);
+                    if (!messageDisplay.textContent && levelConfig.messageOnLoad) messageDisplay.textContent = levelConfig.messageOnLoad;
+                    else if (!messageDisplay.textContent) messageDisplay.textContent = `Level ${levelNumber}: ${levelConfig.name || (levelNumber + " Spikes!")}`;
+                }
+                levelActualWidth = levelConfig.levelActualWidth || gameWidth;
+                groundSegments = levelConfig.groundSegments ? JSON.parse(JSON.stringify(levelConfig.groundSegments)) : [{x:0, y:gameHeight-40, width:levelActualWidth, height:40}];
+                startZone = { ...(levelConfig.startZone || { x: 30, y: gameHeight - 70, width: 60, height: 30 }) };
+                goalZone = { ...(levelConfig.goalZone || { x: levelActualWidth - 90, y: gameHeight - 70, width: 60, height: 30 }), isActive: true }; // Regular goals are active
+                spikes = levelConfig.spikes ? JSON.parse(JSON.stringify(levelConfig.spikes)) : [];
+                if (levelConfig.enemies) enemies = levelConfig.enemies.map(e => ({...e, shootTimer: e.shootTimer || Math.random() * e.shootCooldown, isMinion: false }));
+                if (levelConfig.powerUps) powerUpsInLevel = levelConfig.powerUps.map(p => ({...p, collected: false, width: powerUpSize, height: powerUpSize}));
+            }
 
-            player.x = startZone.x; player.y = startZone.y - player.height -1;
-            camera.x = Math.max(0, player.x - gameWidth / 4); camera.x = Math.min(camera.x, levelActualWidth - gameWidth);
+            player.x = startZone.x + startZone.width / 2 - player.width / 2;
+            player.y = startZone.y - player.height -1;
+            if (!isBossLevel) { // Only adjust camera for non-boss levels based on player start
+                 camera.x = Math.max(0, player.x - gameWidth / 4);
+                 camera.x = Math.min(camera.x, levelActualWidth - gameWidth);
+            } else {
+                camera.x = Math.max(0, (levelActualWidth - gameWidth) / 2); // Center for boss
+            }
             updateUI();
         }
 
@@ -230,52 +331,339 @@
 
         function resetPlayer() {
             deathCount++;
-            player.x = startZone.x; player.y = startZone.y - player.height - 1;
-            player.dx = 0; player.dy = 0; player.onGround = false; projectiles = [];
+            if (isBossLevel && boss) { // Reset boss fight state on player death
+                messageDisplay.textContent = "Boss fight reset!";
+                setupBossLevel(currentLevel); // This reinitializes boss and berries
+            } else {
+                messageDisplay.textContent = "Ouch! Try again.";
+            }
+
+            player.x = startZone.x + startZone.width / 2 - player.width / 2;
+            player.y = startZone.y - player.height - 1;
+            player.dx = 0; player.dy = 0; player.onGround = false;
+            projectiles = []; // Clear regular projectiles
+            // Don't clear bossProjectiles here, setupBossLevel will handle if it's a boss level reset
+
             player.infiniteBlocksActive = false; player.infiniteBlocksTimer = 0;
             player.zeroDashCooldownActive = false; player.zeroDashCooldownTimer = 0;
             player.dashCooldownDuration = baseDashCooldownDuration;
-            camera.x = Math.max(0, player.x - gameWidth / 4); camera.x = Math.min(camera.x, levelActualWidth - gameWidth);
-            messageDisplay.textContent = "Ouch! Try again.";
-            setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again.") messageDisplay.textContent = ""; }, 1500);
+
+            if (!isBossLevel) {
+                camera.x = Math.max(0, player.x - gameWidth / 4);
+                camera.x = Math.min(camera.x, levelActualWidth - gameWidth);
+            } else {
+                camera.x = Math.max(0, (levelActualWidth - gameWidth) / 2); // Recenter for boss
+            }
+
+            setTimeout(() => { if(messageDisplay.textContent === "Ouch! Try again." || messageDisplay.textContent === "Boss fight reset!") messageDisplay.textContent = ""; }, 1500);
             updateUI();
         }
 
+        // --- BOSS LOGIC ---
+        function updateBoss(deltaTime) {
+            if (!boss || !boss.isAlive) return;
+
+            // Boss Movement
+            boss.x += boss.dx;
+            if (boss.x <= 0 || boss.x + boss.width >= levelActualWidth) {
+                boss.dx *= -1;
+                boss.x = Math.max(0, Math.min(boss.x, levelActualWidth - boss.width)); // Clamp
+            }
+
+            // Phase Logic
+            if (boss.phase === 'minion') {
+                boss.minionSpawnTimer -= deltaTime;
+                if (boss.minionSpawnTimer <= 0) {
+                    for (let i = 0; i < BOSS_MINIONS_PER_SPAWN; i++) {
+                        // Spawn minion near boss, alternating sides
+                        let spawnX = boss.x + (i % 2 === 0 ? -30 : boss.width + 10);
+                        spawnX = Math.max(10, Math.min(spawnX, levelActualWidth - 30)); // Clamp within arena
+                        enemies.push({
+                            x: spawnX, y: boss.y + boss.height + 5,
+                            width: 20, height: 20, type: 'shooter', // Using standard shooter
+                            shootCooldown: 200 + Math.random() * 100, shootTimer: 100 + Math.random()*100,
+                            isMinion: true // Flag as minion
+                        });
+                    }
+                    boss.minionsSpawnedThisPhase += BOSS_MINIONS_PER_SPAWN;
+                    boss.minionSpawnTimer = BOSS_MINION_SPAWN_INTERVAL;
+
+                    if (boss.minionsSpawnedThisPhase >= BOSS_MINION_THRESHOLD_FOR_LASER) {
+                        boss.phase = 'laser';
+                        messageDisplay.textContent = "Boss is ENRAGED!";
+                        setTimeout(() => { if(messageDisplay.textContent === "Boss is ENRAGED!") messageDisplay.textContent = ""; }, 2000);
+                        boss.laserShootTimer = BOSS_LASER_SHOOT_INTERVAL / 2; // First laser faster
+                    }
+                }
+            } else if (boss.phase === 'laser') {
+                boss.laserShootTimer -= deltaTime;
+                if (boss.laserShootTimer <= 0) {
+                    // Target player
+                    const dxToPlayer = (player.x + player.width/2) - (boss.x + boss.width/2);
+                    const dyToPlayer = (player.y + player.height/2) - (boss.y + boss.height/2);
+                    const dist = Math.sqrt(dxToPlayer*dxToPlayer + dyToPlayer*dyToPlayer);
+
+                    bossProjectiles.push({
+                        x: boss.x + boss.width / 2 - 5, y: boss.y + boss.height / 2 - 5,
+                        width: 10, height: 10,
+                        dx: (dxToPlayer / dist) * BOSS_PROJECTILE_SPEED,
+                        dy: (dyToPlayer / dist) * BOSS_PROJECTILE_SPEED,
+                    });
+                    boss.laserShootTimer = BOSS_LASER_SHOOT_INTERVAL;
+                }
+            }
+            updateBossUI();
+        }
+
+        function updateBossUI() {
+            if (isBossLevel && boss && boss.isAlive) {
+                const hpPercent = (boss.hp / boss.maxHp) * 100;
+                bossHpFill.style.width = hpPercent + '%';
+                bossHpText.textContent = `BOSS: ${boss.hp} / ${boss.maxHp}`;
+            } else {
+                bossHpContainer.style.display = 'none';
+            }
+        }
+
+
         function update() {
             if (isLevelTransitioning) return;
-            if (player.dashCooldownTimer > 0) player.dashCooldownTimer -= 1000/60;
-            if (player.infiniteBlocksActive) { player.infiniteBlocksTimer -= 1000/60; if (player.infiniteBlocksTimer <= 0) player.infiniteBlocksActive = false; }
-            if (player.zeroDashCooldownActive) { player.zeroDashCooldownTimer -= 1000/60; if (player.zeroDashCooldownTimer <= 0) { player.zeroDashCooldownActive = false; player.dashCooldownDuration = baseDashCooldownDuration; } else { player.dashCooldownDuration = 0; } } else { if(player.dashCooldownDuration === 0) player.dashCooldownDuration = baseDashCooldownDuration; }
-            if (player.isDashing) { player.dashTimer -= 1000 / 60; if (player.dashTimer <= 0) { player.isDashing = false; player.dx = 0; } else { player.dx = player.dashDirection * dashBaseSpeed; player.dy = 0; } } else { player.dx = 0; if (keys.left) player.dx = -playerSpeed; if (keys.right) player.dx = playerSpeed; }
+            const deltaTime = 1000 / 60; // Approximate delta time
+
+            // Power-up and Cooldown Timers
+            if (player.dashCooldownTimer > 0) player.dashCooldownTimer -= deltaTime;
+            if (player.infiniteBlocksActive) { player.infiniteBlocksTimer -= deltaTime; if (player.infiniteBlocksTimer <= 0) player.infiniteBlocksActive = false; }
+            if (player.zeroDashCooldownActive) { player.zeroDashCooldownTimer -= deltaTime; if (player.zeroDashCooldownTimer <= 0) { player.zeroDashCooldownActive = false; player.dashCooldownDuration = baseDashCooldownDuration; } else { player.dashCooldownDuration = 0; } } else { if(player.dashCooldownDuration === 0) player.dashCooldownDuration = baseDashCooldownDuration; }
+
+            // Player Movement and Dashing
+            if (player.isDashing) { player.dashTimer -= deltaTime; if (player.dashTimer <= 0) { player.isDashing = false; player.dx = 0; } else { player.dx = player.dashDirection * dashBaseSpeed; player.dy = 0; } } else { player.dx = 0; if (keys.left) player.dx = -playerSpeed; if (keys.right) player.dx = playerSpeed; }
             player.x += player.dx; if (player.x < 0) player.x = 0; if (player.x + player.width > levelActualWidth) player.x = levelActualWidth - player.width;
             if (!player.isDashing) { player.dy += gravity; player.y += player.dy; }
+
+            // Ground and Block Collision
             player.onGround = false;
-            groundSegments.forEach(segment => { if (player.x + player.width > segment.x && player.x < segment.x + segment.width) { if (player.y + player.height >= segment.y && player.y + player.height - player.dy <= segment.y + 1) { player.y = segment.y - player.height; player.dy = 0; player.onGround = true; } if ((player.dy === 0 || player.onGround) && player.y + player.height > segment.y && player.y < segment.y + segment.height) { if (player.dx > 0 && player.x + player.width >= segment.x && player.x + player.width - player.dx < segment.x ) { player.x = segment.x - player.width; player.dx = 0; } else if (player.dx < 0 && player.x <= segment.x + segment.width && player.x - player.dx > segment.x + segment.width ) { player.x = segment.x + segment.width; player.dx = 0; } } } });
-            placedBlocks.forEach(block => { if (rectCollision(player, block)) { if (player.dy > 0 && (player.y + player.height - player.dy) <= block.y + 1) { player.y = block.y - player.height; player.dy = 0; player.onGround = true; } else if (player.y + player.height > block.y && player.y < block.y + block.height) { if (player.dx > 0 && player.x + player.width >= block.x && player.x + player.width - player.dx < block.x) { player.x = block.x - player.width; player.dx = 0; } else if (player.dx < 0 && player.x <= block.x + block.width && player.x - player.dx > block.x + block.width) { player.x = block.x + block.width; player.dx = 0; } } } });
-            if (spikes) spikes.forEach(spike => { if (rectCollision(player, spike)) resetPlayer(); });
-            for (let i = powerUpsInLevel.length - 1; i >= 0; i--) { let pUp = powerUpsInLevel[i]; if (!pUp.collected && rectCollision(player, pUp)) { pUp.collected = true; messageDisplay.textContent = `Collected ${pUp.type === 'blockBerry' ? 'Block Berry' : 'Speed Berry'}!`; setTimeout(() => { if(messageDisplay.textContent.startsWith("Collected")) messageDisplay.textContent = ""; }, 2000); if (pUp.type === 'blockBerry') { player.infiniteBlocksActive = true; player.infiniteBlocksTimer = powerUpActiveDuration; } else if (pUp.type === 'speedBerry') { player.zeroDashCooldownActive = true; player.zeroDashCooldownTimer = powerUpActiveDuration; player.dashCooldownDuration = 0; } } }
-            enemies.forEach(enemy => { enemy.shootTimer--; if (enemy.shootTimer <= 0) { const distToPlayerX = player.x - enemy.x; const distToPlayerY = player.y - enemy.y; const range = gameWidth * 0.8; if (Math.abs(distToPlayerX) < range && Math.abs(distToPlayerY) < range * 0.7) { let projDx = Math.sign(distToPlayerX); let projDy = 0; if (Math.abs(distToPlayerY) > 20) { projDy = Math.sign(distToPlayerY) * 0.5; } const projectileSpeed = 4; projectiles.push({ x: enemy.x + enemy.width / 2 - 2.5, y: enemy.y + enemy.height / 2 - 2.5, width: 5, height: 5, dx: projDx * projectileSpeed, dy: projDy * projectileSpeed, active: true }); enemy.shootTimer = enemy.shootCooldown + (Math.random() * 30 - 15); } else { enemy.shootTimer = 30; } } });
-            for (let i = projectiles.length - 1; i >= 0; i--) { let p = projectiles[i]; p.x += p.dx; p.y += p.dy; if (p.x < camera.x - p.width || p.x > camera.x + gameWidth || p.y < 0 || p.y > gameHeight) { projectiles.splice(i, 1); continue; } if (rectCollision(p, player)) { projectiles.splice(i, 1); resetPlayer(); continue; } let hitBlock = false; for(let j = placedBlocks.length - 1; j >=0; j--) { if (rectCollision(p, placedBlocks[j])) { projectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue; for(let j = groundSegments.length - 1; j >=0; j--) { if (rectCollision(p, groundSegments[j])) { projectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue; }
-            if (startZone && rectCollision(player, startZone)) { if (player.blocksAvailable < maxBlocks || player.infiniteBlocksActive) { player.blocksAvailable = maxBlocks; if(!player.infiniteBlocksActive) messageDisplay.textContent = "Blocks Refilled!"; setTimeout(() => { if(messageDisplay.textContent === "Blocks Refilled!") messageDisplay.textContent = ""; }, 1500); } }
-            if (goalZone && rectCollision(player, goalZone) && !isLevelTransitioning) { isLevelTransitioning = true; currentLevel++; let nextLvlMsg = `Advancing to Level ${currentLevel}...`; setTimeout(() => { setupLevel(currentLevel); }, 600); messageDisplay.textContent = nextLvlMsg;}
+            [...groundSegments, ...placedBlocks].forEach(platform => {
+                if (rectCollision(player, platform)) {
+                    if (player.dy >= 0 && (player.y + player.height - player.dy) <= platform.y + 1) { // Landing on top
+                        player.y = platform.y - player.height;
+                        player.dy = 0;
+                        player.onGround = true;
+                    } else if (player.y + player.height > platform.y && player.y < platform.y + platform.height) { // Wall collision
+                        if (player.dx > 0 && player.x + player.width >= platform.x && player.x + player.width - player.dx < platform.x) {
+                            player.x = platform.x - player.width; player.dx = 0;
+                        } else if (player.dx < 0 && player.x <= platform.x + platform.width && player.x - player.dx > platform.x + platform.width) {
+                            player.x = platform.x + platform.width; player.dx = 0;
+                        }
+                    }
+                     // Top collision (hitting head) - only for ground segments for now, not placed blocks.
+                    if (platform.height > blockHeight + 1) { // Assume ground segments are thicker
+                        if (player.dy < 0 && player.y >= platform.y + platform.height -1 && (player.y - player.dy) > platform.y + platform.height) {
+                           if (player.x + player.width > platform.x && player.x < platform.x + platform.width) {
+                                player.y = platform.y + platform.height;
+                                player.dy = 0.1; // Slight bounce down
+                           }
+                        }
+                    }
+                }
+            });
+
+
+            // Spike Collision
+            if (!isBossLevel && spikes) spikes.forEach(spike => { if (rectCollision(player, spike)) resetPlayer(); });
+
+            // Power-Up Collection (Generic)
+            for (let i = powerUpsInLevel.length - 1; i >= 0; i--) {
+                let pUp = powerUpsInLevel[i];
+                if (!pUp.collected && rectCollision(player, pUp)) {
+                    pUp.collected = true; // Mark as collected for generic handling/drawing
+                    if (pUp.type === 'attackBerry' && isBossLevel && boss && boss.isAlive) {
+                        // Special handling for attack berry is done below
+                    } else {
+                        messageDisplay.textContent = `Collected ${pUp.type === 'blockBerry' ? 'Block Berry' : (pUp.type === 'speedBerry' ? 'Speed Berry' : 'Power Up')}!`;
+                        setTimeout(() => { if(messageDisplay.textContent.startsWith("Collected")) messageDisplay.textContent = ""; }, 2000);
+                        if (pUp.type === 'blockBerry') { player.infiniteBlocksActive = true; player.infiniteBlocksTimer = powerUpActiveDuration; }
+                        else if (pUp.type === 'speedBerry') { player.zeroDashCooldownActive = true; player.zeroDashCooldownTimer = powerUpActiveDuration; player.dashCooldownDuration = 0; }
+                    }
+                }
+            }
+
+            // Attack Berry Collection & Boss Damage & Respawn
+            if (isBossLevel && boss && boss.isAlive) {
+                let berryCollectedThisFrame = false;
+                for (let i = powerUpsInLevel.length - 1; i >= 0; i--) {
+                    let pUp = powerUpsInLevel[i];
+                    if (pUp.type === 'attackBerry' && pUp.collected) { // Was marked collected by generic loop
+                        boss.hp -= BOSS_ATTACK_BERRY_DAMAGE;
+                        boss.hp = Math.max(0, boss.hp);
+                        messageDisplay.textContent = `Boss Hit! HP: ${boss.hp}/${boss.maxHp}`;
+                         setTimeout(() => {
+                            if (messageDisplay.textContent.startsWith("Boss Hit!")) messageDisplay.textContent = "";
+                        }, 1500);
+
+                        powerUpsInLevel.splice(i, 1); // Remove collected berry
+                        berryCollectedThisFrame = true;
+                        if (boss.hp <= 0) {
+                            boss.isAlive = false;
+                            goalZone.isActive = true;
+                            messageDisplay.textContent = "BOSS DEFEATED!";
+                            enemies = enemies.filter(e => !e.isMinion); // Clear minions
+                            bossProjectiles = [];
+                            bossHpContainer.style.display = 'none';
+                            // No timeout for boss defeated message
+                            break; // Stop processing more berries if boss is dead
+                        }
+                    }
+                }
+                if (boss.isAlive) { // Only respawn if boss is still alive
+                    const currentAttackBerriesCount = powerUpsInLevel.filter(p => p.type === 'attackBerry').length;
+                    for (let i = 0; i < NUM_ATTACK_BERRIES - currentAttackBerriesCount; i++) {
+                        spawnAttackBerry(); // Spawn new ones to replace collected ones
+                    }
+                }
+                 updateBossUI(); // Ensure UI updates after damage
+            }
+
+
+            // Enemy Logic
+            enemies.forEach(enemy => {
+                enemy.shootTimer -= deltaTime;
+                if (enemy.shootTimer <= 0) {
+                    const distToPlayerX = player.x - enemy.x;
+                    const distToPlayerY = player.y - enemy.y;
+                    const range = gameWidth * (enemy.isMinion ? 1.5 : 0.8); // Minions might have longer range
+                    if (Math.abs(distToPlayerX) < range && Math.abs(distToPlayerY) < range * 0.7) {
+                        let projDx = Math.sign(distToPlayerX);
+                        let projDy = 0;
+                        if (Math.abs(distToPlayerY) > 20) { projDy = Math.sign(distToPlayerY) * 0.5; }
+                        const projectileSpeed = enemy.isMinion ? 3 : 4;
+                        projectiles.push({ x: enemy.x + enemy.width / 2 - 2.5, y: enemy.y + enemy.height / 2 - 2.5, width: 5, height: 5, dx: projDx * projectileSpeed, dy: projDy * projectileSpeed, active: true });
+                        enemy.shootTimer = enemy.shootCooldown + (Math.random() * 30 - 15);
+                    } else {
+                        enemy.shootTimer = 30; // Short retry if player out of range
+                    }
+                }
+            });
+
+            // Projectile Logic (Regular Enemies)
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i]; p.x += p.dx; p.y += p.dy;
+                if (p.x < camera.x - p.width || p.x > camera.x + gameWidth || p.y < 0 || p.y > gameHeight) { projectiles.splice(i, 1); continue; }
+                if (rectCollision(p, player)) { projectiles.splice(i, 1); resetPlayer(); continue; }
+                let hitBlock = false;
+                for(let j = placedBlocks.length - 1; j >=0; j--) { if (rectCollision(p, placedBlocks[j])) { projectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue;
+                for(let j = groundSegments.length - 1; j >=0; j--) { if (rectCollision(p, groundSegments[j])) { projectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue;
+            }
+
+            // Boss Projectile Logic
+            if (isBossLevel) {
+                for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+                    let bp = bossProjectiles[i]; bp.x += bp.dx; bp.y += bp.dy;
+                    if (bp.x < camera.x - bp.width || bp.x > camera.x + gameWidth || bp.y < camera.y - bp.height || bp.y > camera.y + gameHeight) {
+                        bossProjectiles.splice(i, 1); continue;
+                    }
+                    if (rectCollision(bp, player)) {
+                        bossProjectiles.splice(i, 1); resetPlayer(); continue;
+                    }
+                     let hitBlock = false; // Boss projectiles can also hit blocks
+                    for(let j = placedBlocks.length - 1; j >=0; j--) { if (rectCollision(bp, placedBlocks[j])) { bossProjectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue;
+                    for(let j = groundSegments.length - 1; j >=0; j--) { if (rectCollision(bp, groundSegments[j])) { bossProjectiles.splice(i, 1); hitBlock = true; break; } } if (hitBlock) continue;
+                }
+            }
+
+
+            // Start Zone Block Refill
+            if (startZone && rectCollision(player, startZone)) {
+                 if ((!player.infiniteBlocksActive && player.blocksAvailable < maxBlocks) || (isBossLevel && player.blocksAvailable < maxBlocks)) { // Also refill in boss levels
+                    player.blocksAvailable = maxBlocks;
+                    if(!player.infiniteBlocksActive) messageDisplay.textContent = "Blocks Refilled!";
+                    setTimeout(() => { if(messageDisplay.textContent === "Blocks Refilled!") messageDisplay.textContent = ""; }, 1500);
+                }
+            }
+
+            // Goal Zone
+            if (goalZone && goalZone.isActive && rectCollision(player, goalZone) && !isLevelTransitioning) {
+                isLevelTransitioning = true; currentLevel++;
+                let nextLvlMsg = `Advancing to Level ${currentLevel}...`;
+                if (isBossLevel) nextLvlMsg = `Boss Vanquished! ${nextLvlMsg}`;
+                setTimeout(() => { setupLevel(currentLevel); }, isBossLevel ? 1500 : 600); // Longer delay after boss
+                messageDisplay.textContent = nextLvlMsg;
+            }
+
+            // Fall off screen
             if (player.y > gameHeight + player.height * 3) resetPlayer();
-            let targetCameraX = player.x - gameWidth / 2 + player.width / 2; camera.x += (targetCameraX - camera.x) * 0.08; camera.x = Math.max(0, Math.min(camera.x, levelActualWidth - gameWidth)); if (levelActualWidth <= gameWidth) camera.x = 0;
+
+            // Camera
+            if (!isBossLevel) { // Camera follows player only in non-boss levels
+                let targetCameraX = player.x - gameWidth / 2 + player.width / 2;
+                camera.x += (targetCameraX - camera.x) * 0.08;
+                camera.x = Math.max(0, Math.min(camera.x, levelActualWidth - gameWidth));
+                if (levelActualWidth <= gameWidth) camera.x = 0;
+            } else { // Boss level camera is fixed/centered
+                 camera.x = Math.max(0, (levelActualWidth - gameWidth) / 2);
+            }
+
+
+            // Boss Update
+            if (isBossLevel) {
+                updateBoss(deltaTime);
+            }
+
             updateUI();
         }
 
         function draw() {
             ctx.fillStyle = gameBackgroundColor; ctx.fillRect(0, 0, gameWidth, gameHeight);
             ctx.save(); ctx.translate(-camera.x, -camera.y);
+
             ctx.fillStyle = groundColor; groundSegments.forEach(segment => ctx.fillRect(segment.x, segment.y, segment.width, segment.height));
             if (startZone) { ctx.fillStyle = startColor; ctx.fillRect(startZone.x, startZone.y, startZone.width, startZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("START", startZone.x + startZone.width / 2, startZone.y + startZone.height / 2 + 5); }
-            if (goalZone) { ctx.fillStyle = goalColor; ctx.fillRect(goalZone.x, goalZone.y, goalZone.width, goalZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("GOAL", goalZone.x + goalZone.width / 2, goalZone.y + goalZone.height / 2 + 5); }
-            powerUpsInLevel.forEach(pUp => { if (!pUp.collected) { ctx.fillStyle = pUp.type === 'blockBerry' ? blockBerryColor : speedBerryColor; ctx.beginPath(); ctx.arc(pUp.x + pUp.width / 2, pUp.y + pUp.height / 2, pUp.width / 2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "black"; ctx.font = "10px Arial"; ctx.textAlign = "center"; ctx.fillText(pUp.type === 'blockBerry' ? "B" : "S", pUp.x + pUp.width/2, pUp.y + pUp.height/2 + 3); } });
-            if (spikes) { ctx.fillStyle = spikeColor; spikes.forEach(spike => { ctx.beginPath(); ctx.moveTo(spike.x, spike.y + spike.height); ctx.lineTo(spike.x + spike.width / 2, spike.y); ctx.lineTo(spike.x + spike.width, spike.y + spike.height); ctx.closePath(); ctx.fill(); }); }
-            enemies.forEach(enemy => { ctx.fillStyle = enemyColor; ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height); });
+            if (goalZone && goalZone.isActive) { ctx.fillStyle = goalColor; ctx.fillRect(goalZone.x, goalZone.y, goalZone.width, goalZone.height); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText("GOAL", goalZone.x + goalZone.width / 2, goalZone.y + goalZone.height / 2 + 5); }
+
+            powerUpsInLevel.forEach(pUp => {
+                if (!pUp.collected) {
+                    if (pUp.type === 'blockBerry') ctx.fillStyle = blockBerryColor;
+                    else if (pUp.type === 'speedBerry') ctx.fillStyle = speedBerryColor;
+                    else if (pUp.type === 'attackBerry') ctx.fillStyle = attackBerryColor;
+                    else ctx.fillStyle = 'gray'; // Fallback
+
+                    ctx.beginPath(); ctx.arc(pUp.x + pUp.width / 2, pUp.y + pUp.height / 2, pUp.width / 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "black"; ctx.font = "10px Arial"; ctx.textAlign = "center";
+                    let berryText = "?";
+                    if (pUp.type === 'blockBerry') berryText = "B";
+                    else if (pUp.type === 'speedBerry') berryText = "S";
+                    else if (pUp.type === 'attackBerry') berryText = "A"; // For Attack Berry
+                    ctx.fillText(berryText, pUp.x + pUp.width/2, pUp.y + pUp.height/2 + 3);
+                }
+            });
+
+            if (!isBossLevel && spikes) { ctx.fillStyle = spikeColor; spikes.forEach(spike => { ctx.beginPath(); ctx.moveTo(spike.x, spike.y + spike.height); ctx.lineTo(spike.x + spike.width / 2, spike.y); ctx.lineTo(spike.x + spike.width, spike.y + spike.height); ctx.closePath(); ctx.fill(); }); }
+
+            // Draw Boss
+            if (isBossLevel && boss && boss.isAlive) {
+                ctx.fillStyle = bossAlienColor;
+                ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+                // Simple eye for direction
+                ctx.fillStyle = 'white';
+                ctx.fillRect(boss.x + (boss.dx > 0 ? boss.width * 0.6 : boss.width * 0.2), boss.y + boss.height * 0.2, 10, 10);
+                ctx.fillStyle = 'black';
+                ctx.fillRect(boss.x + (boss.dx > 0 ? boss.width * 0.65 : boss.width * 0.25), boss.y + boss.height * 0.25, 5, 5);
+
+
+                // Draw Boss Projectiles
+                ctx.fillStyle = bossLaserColor;
+                bossProjectiles.forEach(bp => ctx.fillRect(bp.x, bp.y, bp.width, bp.height));
+            }
+
+            enemies.forEach(enemy => {
+                ctx.fillStyle = enemy.isMinion ? '#8B0000' : enemyColor; // DarkRed for minions
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            });
             projectiles.forEach(p => { ctx.fillStyle = projectileColor; ctx.fillRect(p.x, p.y, p.width, p.height); });
+
             ctx.fillStyle = blockColor; placedBlocks.forEach(block => ctx.fillRect(block.x, block.y, block.width, block.height));
             let currentPlayerColor = playerColor; if (player.infiniteBlocksActive) currentPlayerColor = blockBerryColor; if (player.zeroDashCooldownActive) currentPlayerColor = speedBerryColor; if (player.isDashing) currentPlayerColor = '#FF69B4';
             ctx.fillStyle = currentPlayerColor; ctx.fillRect(player.x, player.y, player.width, player.height);
+
             ctx.restore();
         }
 
@@ -301,42 +689,28 @@
         function updateFullscreenButtonText() { fullscreenBtn.textContent = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement ? "Exit Fullscreen" : "Go Fullscreen"; }
         document.addEventListener('fullscreenchange', updateFullscreenButtonText); document.addEventListener('mozfullscreenchange', updateFullscreenButtonText); document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText); document.addEventListener('msfullscreenchange', updateFullscreenButtonText);
 
-        function detectMobile() {
-            isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-            return isMobile;
-        }
-
+        function detectMobile() { isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0); return isMobile; }
         function setupMobileControls() {
             if (!isMobile) return;
             mobileControlsContainer.style.display = 'block';
             const handleTouchStart = (e, action) => { e.preventDefault(); action(); };
             const handleTouchEnd = (e, action) => { e.preventDefault(); action(); };
-
             mobileLeftBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => keys.left = true), { passive: false });
             mobileLeftBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.left = false), { passive: false });
             mobileLeftBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.left = false), { passive: false });
-
             mobileRightBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => keys.right = true), { passive: false });
             mobileRightBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.right = false), { passive: false });
             mobileRightBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.right = false), { passive: false });
-
-            mobileJumpBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => {
-                keys.up = true;
-                if (player.onGround && !player.isDashing) {
-                    player.dy = jumpStrength;
-                    player.onGround = false;
-                }
-            }), { passive: false });
+            mobileJumpBtn.addEventListener('touchstart', (e) => handleTouchStart(e, () => { keys.up = true; if (player.onGround && !player.isDashing) { player.dy = jumpStrength; player.onGround = false; } }), { passive: false });
             mobileJumpBtn.addEventListener('touchend', (e) => handleTouchEnd(e, () => keys.up = false), { passive: false });
             mobileJumpBtn.addEventListener('touchcancel', (e) => handleTouchEnd(e, () => keys.up = false), { passive: false });
-
             mobileBlockBtn.addEventListener('touchstart', (e) => handleTouchStart(e, placeBlock), { passive: false });
             mobileDashBtn.addEventListener('touchstart', (e) => handleTouchStart(e, performDash), { passive: false });
         }
 
         detectMobile();
         setupMobileControls();
-        setupLevel(currentLevel);
+        setupLevel(currentLevel); // Start game at level 1
         updateFullscreenButtonText();
         gameLoop();
     </script>
